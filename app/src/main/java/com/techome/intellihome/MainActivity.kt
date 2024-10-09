@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -23,32 +22,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import java.io.File
 
 class MainActivity : ComponentActivity() {
-    private lateinit var requestNotificationPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        // Solicitar permisos de notificación
-        requestNotificationPermissionLauncher = registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted: Boolean ->
-            if (isGranted) {
-                Toast.makeText(this, "Permisos de notificación concedidos", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "Permisos de notificación denegados", Toast.LENGTH_SHORT).show()
-            }
-        }
 
         setContent {
             MaterialTheme {
@@ -59,31 +43,35 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-
-        // Verificar permisos de notificación si es Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            checkNotificationPermission()
-        }
-    }
-
-    private fun checkNotificationPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-            != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            // Solicitar permisos de notificación
-            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
     }
 }
+
+// Clase para representar al usuario
+data class User(
+    val alias: String,
+    val fullName: String,
+    val email: String,
+    val password: String,
+    val age: Int
+)
 
 @Composable
 fun LoginScreen(modifier: Modifier = Modifier) {
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var isLoggedIn by rememberSaveable { mutableStateOf(false) }
+    var isAdmin by rememberSaveable { mutableStateOf(false) }
+    var showRegister by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
 
     if (isLoggedIn) {
-        AdminMenuScreen(context = context)
+        if (isAdmin) {
+            AdminMenuScreen(context = context)
+        } else {
+            UserMenuScreen()
+        }
+    } else if (showRegister) {
+        RegisterUserScreen(onBack = { showRegister = false })
     } else {
         Column(
             modifier = modifier.fillMaxSize(),
@@ -118,10 +106,11 @@ fun LoginScreen(modifier: Modifier = Modifier) {
                 }
             )
             Button(onClick = {
-                val savedPassword = readPasswordFromFile(context)
-                if (username == "Admin" && password == savedPassword) {
+                val userData = readUserDataFromFile(context, username)
+                if (userData != null && userData.password == password) {
                     isLoggedIn = true
-                    startPasswordReminder(context)
+                    isAdmin = username == "Admin" // Si el alias es Admin, se otorgan privilegios de administrador
+                    Toast.makeText(context, "Ingreso exitoso", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(
                         context,
@@ -132,68 +121,194 @@ fun LoginScreen(modifier: Modifier = Modifier) {
             }) {
                 Text("Login")
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Botón para registrar nuevo usuario
+            Button(onClick = {
+                showRegister = true
+            }) {
+                Text("Registrar nuevo usuario")
+            }
         }
     }
 }
 
+// Pantalla del menú de administrador
 @Composable
 fun AdminMenuScreen(context: android.content.Context) {
-    var appEnabled by remember { mutableStateOf(true) }
-    var newPassword by remember { mutableStateOf("") }
-
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("Bienvenido, Admin")
+        // Funcionalidades del administrador
+    }
+}
+
+// Pantalla del menú de usuario común
+@Composable
+fun UserMenuScreen() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Bienvenido, Usuario")
+        // Funcionalidades para usuarios comunes
+    }
+}
+
+// Pantalla de registro de usuario
+@Composable
+fun RegisterUserScreen(onBack: () -> Unit) {
+    var alias by rememberSaveable { mutableStateOf("") }
+    var fullName by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    var age by rememberSaveable { mutableStateOf(18) } // Nueva variable para la edad
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Registrar nuevo usuario", style = MaterialTheme.typography.headlineSmall)
+
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Habilitar/deshabilitar App")
-        Switch(
-            checked = appEnabled,
-            onCheckedChange = {
-                appEnabled = it
-                Toast.makeText(
-                    context,
-                    if (appEnabled) "App habilitada" else "App deshabilitada",
-                    Toast.LENGTH_SHORT
-                ).show()
+        BasicTextField(
+            value = alias,
+            onValueChange = { alias = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (alias.isEmpty()) Text("Usuario (alias)")
+                    innerTextField()
+                }
             }
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Campo para cambiar la contraseña
-        Text("Cambiar Contraseña:")
         BasicTextField(
-            value = newPassword,
-            onValueChange = { newPassword = it },
+            value = fullName,
+            onValueChange = { fullName = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (fullName.isEmpty()) Text("Nombre completo")
+                    innerTextField()
+                }
+            }
+        )
+
+        BasicTextField(
+            value = email,
+            onValueChange = { email = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (email.isEmpty()) Text("Correo electrónico")
+                    innerTextField()
+                }
+            }
+        )
+
+        BasicTextField(
+            value = password,
+            onValueChange = { password = it },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
             decorationBox = { innerTextField ->
                 Box(modifier = Modifier.padding(16.dp)) {
-                    if (newPassword.isEmpty()) Text("Nueva Contraseña")
+                    if (password.isEmpty()) Text("Contraseña")
                     innerTextField()
                 }
             }
         )
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Selector de edad
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text("Edad:")
+            BasicTextField(
+                value = age.toString(),
+                onValueChange = { newValue ->
+                    val parsedValue = newValue.toIntOrNull() ?: 18
+                    age = parsedValue.coerceIn(1, 120) // Limitar la edad entre 1 y 120
+                },
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .width(50.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Button(onClick = {
-            if (newPassword.isNotEmpty()) {
-                writePasswordToFile(context, newPassword)
-                Toast.makeText(context, "Contraseña actualizada", Toast.LENGTH_SHORT).show()
-                newPassword = "" // Limpiar campo
+            if (alias.isNotEmpty() && fullName.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty()) {
+                val newUser = User(alias, fullName, email, password, age)
+                saveUserToFile(context, newUser)
+                Toast.makeText(context, "Usuario registrado con éxito", Toast.LENGTH_SHORT).show()
+                onBack() // Regresar a la pantalla de inicio de sesión
+            } else {
+                Toast.makeText(context, "Por favor complete todos los campos", Toast.LENGTH_SHORT).show()
             }
         }) {
-            Text("Actualizar Contraseña")
+            Text("Registrar")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = onBack) {
+            Text("Volver")
         }
     }
 }
 
-// Función para recordar al admin que cambie la contraseña cada 2 minutos usando notificaciones
+// Función para leer los datos de usuario desde el archivo
+fun readUserDataFromFile(context: android.content.Context, alias: String): User? {
+    val file = File(context.filesDir, "users.txt")
+    if (file.exists()) {
+        val lines = file.readLines()
+        for (line in lines) {
+            val parts = line.split(",")
+            if (parts.size == 5 && parts[0] == alias) {
+                return User(
+                    alias = parts[0],
+                    fullName = parts[1],
+                    email = parts[2],
+                    password = parts[3],
+                    age = parts[4].toInt() // Convertir el campo de edad a entero
+                )
+            }
+        }
+    }
+    return null
+}
+
+// Función para guardar los datos de usuario en un archivo
+fun saveUserToFile(context: android.content.Context, user: User) {
+    val file = File(context.filesDir, "users.txt")
+    file.appendText("${user.alias},${user.fullName},${user.email},${user.password},${user.age}\n")
+}
+
+// Función para recordar al admin que cambie la contraseña cada 2 minutos usando notificaciones (usando while para el ciclo repetitivo)
 fun startPasswordReminder(context: android.content.Context) {
     val handler = Handler(Looper.getMainLooper())
 
@@ -224,27 +339,15 @@ fun startPasswordReminder(context: android.content.Context) {
                 notify(1, builder.build())
             }
 
-            // Repetir la llamada cada 2 minutos (120000 ms)
-            handler.postDelayed(this, 120000)
+            // Repetir la llamada cada 2 minutos (120000 ms) usando while
+            var repeatReminder = true
+            while (repeatReminder) {
+                handler.postDelayed(this, 120000)
+                // Aquí podrías agregar alguna condición para detener el recordatorio, si es necesario
+            }
         }
     }
 
     // Iniciar el recordatorio
     handler.post(reminderRunnable)
-}
-
-// Función para leer la contraseña desde un archivo
-fun readPasswordFromFile(context: android.content.Context): String {
-    val file = File(context.filesDir, "password.txt")
-    return if (file.exists()) {
-        file.readText()
-    } else {
-        "TEC2024" // Contraseña predeterminada si no existe el archivo
-    }
-}
-
-// Función para escribir la contraseña en un archivo
-fun writePasswordToFile(context: android.content.Context, password: String) {
-    val file = File(context.filesDir, "password.txt")
-    file.writeText(password)
 }
