@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Clase para representar al usuario
+// Clase usuario
 data class User(
     val alias: String,
     val fullName: String,
