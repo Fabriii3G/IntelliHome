@@ -34,6 +34,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Asegurarse de que el usuario Admin esté en el archivo
+        addDefaultAdminUser()
+
         setContent {
             MaterialTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -44,6 +47,15 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    // Función para agregar el usuario Admin con la contraseña predeterminada si no existe en el archivo
+    private fun addDefaultAdminUser() {
+        val file = File(filesDir, "users.txt")
+        if (!file.exists() || !file.readText().contains("Admin")) {
+            // Si no existe el usuario Admin, lo agregamos
+            file.appendText("Admin,Administrador,admin@tec.com,TEC2024,30\n")
+        }
+    }
 }
 
 // Clase usuario
@@ -51,9 +63,11 @@ data class User(
     val alias: String,
     val fullName: String,
     val email: String,
-    val password: String,
-    val age: Int
+    var password: String,
+    val age: Int,
 )
+
+var isAppEnabled by mutableStateOf(true) // Variable para habilitar/deshabilitar el aplicativo
 
 @Composable
 fun LoginScreen(modifier: Modifier = Modifier) {
@@ -73,6 +87,10 @@ fun LoginScreen(modifier: Modifier = Modifier) {
     } else if (showRegister) {
         RegisterUserScreen(onBack = { showRegister = false })
     } else {
+        if (!isAppEnabled) {
+            Toast.makeText(context, "El aplicativo está deshabilitado", Toast.LENGTH_SHORT).show()
+            return
+        }
         Column(
             modifier = modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
@@ -107,9 +125,14 @@ fun LoginScreen(modifier: Modifier = Modifier) {
             )
             Button(onClick = {
                 val userData = readUserDataFromFile(context, username)
-                if (userData != null && userData.password == password) {
+                if (username == "Admin" && password == "TEC2024") {
                     isLoggedIn = true
-                    isAdmin = username == "Admin" // Si el alias es Admin, se otorgan privilegios de administrador
+                    isAdmin = true
+                    Toast.makeText(context, "Ingreso exitoso como Admin", Toast.LENGTH_SHORT).show()
+                    startPasswordReminder(context) // Inicia recordatorio de contraseña
+                } else if (userData != null && userData.password == password) {
+                    isLoggedIn = true
+                    isAdmin = false
                     Toast.makeText(context, "Ingreso exitoso", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(
@@ -137,13 +160,52 @@ fun LoginScreen(modifier: Modifier = Modifier) {
 // Pantalla del menú de administrador
 @Composable
 fun AdminMenuScreen(context: android.content.Context) {
+    var newPassword by rememberSaveable { mutableStateOf("") }
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("Bienvenido, Admin")
-        // Funcionalidades del administrador
+
+        // Botón para habilitar/deshabilitar el aplicativo
+        Button(onClick = {
+            isAppEnabled = !isAppEnabled
+            Toast.makeText(context, if (isAppEnabled) "Aplicativo habilitado" else "Aplicativo deshabilitado", Toast.LENGTH_SHORT).show()
+        }) {
+            Text(if (isAppEnabled) "Deshabilitar aplicativo" else "Habilitar aplicativo")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Campo para cambiar la contraseña
+        BasicTextField(
+            value = newPassword,
+            onValueChange = { newPassword = it },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (newPassword.isEmpty()) Text("Nueva contraseña")
+                    innerTextField()
+                }
+            }
+        )
+
+        // Botón para actualizar la contraseña
+        Button(onClick = {
+            if (newPassword.isNotEmpty()) {
+                updateAdminPassword(context, newPassword)
+                Toast.makeText(context, "Contraseña actualizada", Toast.LENGTH_SHORT).show()
+                newPassword = "" // Limpiar el campo después de actualizar
+            } else {
+                Toast.makeText(context, "Por favor ingrese una nueva contraseña", Toast.LENGTH_SHORT).show()
+            }
+        }) {
+            Text("Cambiar Contraseña")
+        }
     }
 }
 
@@ -308,7 +370,24 @@ fun saveUserToFile(context: android.content.Context, user: User) {
     file.appendText("${user.alias},${user.fullName},${user.email},${user.password},${user.age}\n")
 }
 
-// Función para recordar al admin que cambie la contraseña cada 2 minutos usando notificaciones (usando while para el ciclo repetitivo)
+// Función para actualizar la contraseña del Admin en el archivo
+fun updateAdminPassword(context: android.content.Context, newPassword: String) {
+    val file = File(context.filesDir, "users.txt")
+    if (file.exists()) {
+        val lines = file.readLines()
+        val newLines = lines.map { line ->
+            if (line.startsWith("Admin")) {
+                val parts = line.split(",")
+                "Admin,${parts[1]},${parts[2]},$newPassword,${parts[4]}"
+            } else {
+                line
+            }
+        }
+        file.writeText(newLines.joinToString("\n"))
+    }
+}
+
+// Función para recordar al admin que cambie la contraseña cada 2 minutos usando notificaciones
 fun startPasswordReminder(context: android.content.Context) {
     val handler = Handler(Looper.getMainLooper())
 
@@ -339,12 +418,8 @@ fun startPasswordReminder(context: android.content.Context) {
                 notify(1, builder.build())
             }
 
-            // Repetir la llamada cada 2 minutos (120000 ms) usando while
-            var repeatReminder = true
-            while (repeatReminder) {
-                handler.postDelayed(this, 120000)
-                // Aquí podrías agregar alguna condición para detener el recordatorio, si es necesario
-            }
+            // Repetir la llamada cada 2 minutos (120000 ms)
+            handler.postDelayed(this, 120000)
         }
     }
 
