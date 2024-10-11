@@ -66,8 +66,8 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation 'com.sun.mail:android-mail:1.6.6'
-    implementation 'com.sun.mail:android-activation:1.6.6'
+    //implementation 'com.sun.mail:android-mail:1.6.6'
+    //implementation 'com.sun.mail:android-activation:1.6.6'
 
 
 

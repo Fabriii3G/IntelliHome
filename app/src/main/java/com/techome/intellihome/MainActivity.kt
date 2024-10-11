@@ -35,33 +35,47 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.TextButton
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Solicitar permisos para notificaciones en Android 13 o superior
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
             }
         }
-
         // Asegurarse de que el usuario Admin esté en el archivo
         addDefaultAdminUser()
 
         setContent {
             MaterialTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    LoginScreen(
-                        modifier = Modifier.padding(innerPadding),
-                    )
+                    var currentScreen by rememberSaveable { mutableStateOf("login") }
+
+                    when (currentScreen) {
+                        "login" -> LoginScreen(
+                            modifier = Modifier.padding(innerPadding),
+                            onForgotPassword = { currentScreen = "requestEmail" }
+                        )
+                        "requestEmail" -> RequestPasswordResetScreen(
+                            onEmailSent = { currentScreen = "verifyCode" }
+                        )
+                        "verifyCode" -> VerifyRecoveryCodeScreen(
+                            onCodeVerified = { currentScreen = "resetPassword" },
+                            onError = { currentScreen = "requestEmail" }
+                        )
+                        "resetPassword" -> ResetPasswordScreen(
+                            onPasswordReset = { currentScreen = "login" }
+                        )
+                    }
                 }
             }
         }
     }
-
     // Función para agregar el usuario Admin con la contraseña predeterminada si no existe en el archivo
     private fun addDefaultAdminUser() {
         val file = File(filesDir, "users.txt")
@@ -95,7 +109,7 @@ fun isPasswordValid(password: String): Boolean {
 }
 
 @Composable
-fun LoginScreen(modifier: Modifier = Modifier) {
+fun LoginScreen(modifier: Modifier = Modifier, onForgotPassword: () -> Unit) {
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var showRegister by rememberSaveable { mutableStateOf(false) }
@@ -187,6 +201,153 @@ fun LoginScreen(modifier: Modifier = Modifier) {
                     Text("Registrar nuevo usuario")
                 }
             }
+            Spacer(modifier = Modifier.height(16.dp))
+            TextButton(onClick = onForgotPassword) {
+                Text("¿Olvidaste tu contraseña?")
+            }
+        }
+    }
+}
+
+@Composable
+fun RequestPasswordResetScreen(onEmailSent: () -> Unit) {
+    var email by rememberSaveable { mutableStateOf("") }
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Recuperar contraseña")
+
+        BasicTextField(
+            value = email,
+            onValueChange = { email = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (email.isEmpty()) Text("Correo electrónico")
+                    innerTextField()
+                }
+            }
+        )
+
+        Button(onClick = {
+            val user = readUserDataByEmail(context, email)
+            if (user != null) {
+                sendRecoveryCode(context, email)
+                onEmailSent() // Navegar a la pantalla de verificación del código
+            } else {
+                Toast.makeText(context, "Correo no encontrado", Toast.LENGTH_SHORT).show()
+            }
+        }) {
+            Text("Enviar código")
+        }
+    }
+}
+
+@Composable
+fun VerifyRecoveryCodeScreen(onCodeVerified: () -> Unit, onError: () -> Unit) {
+    var code by rememberSaveable { mutableStateOf("") }
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Ingrese el código de recuperación")
+
+        BasicTextField(
+            value = code,
+            onValueChange = { code = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (code.isEmpty()) Text("Código de recuperación")
+                    innerTextField()
+                }
+            }
+        )
+
+        Button(onClick = {
+            val sharedPreferences = context.getSharedPreferences("RecoveryPrefs", android.content.Context.MODE_PRIVATE)
+            val savedCode = sharedPreferences.getString("recovery_code", "")
+
+            if (code == savedCode) {
+                onCodeVerified() // Navegar a la pantalla para cambiar contraseña
+            } else {
+                onError() // Manejar el error
+            }
+        }) {
+            Text("Verificar código")
+        }
+    }
+}
+
+@Composable
+fun ResetPasswordScreen(onPasswordReset: () -> Unit) {
+    var newPassword by rememberSaveable { mutableStateOf("") }
+    var confirmPassword by rememberSaveable { mutableStateOf("") }
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Cambiar Contraseña")
+
+        BasicTextField(
+            value = newPassword,
+            onValueChange = { newPassword = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            visualTransformation = PasswordVisualTransformation(),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (newPassword.isEmpty()) Text("Nueva contraseña")
+                    innerTextField()
+                }
+            }
+        )
+
+        BasicTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            visualTransformation = PasswordVisualTransformation(),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (confirmPassword.isEmpty()) Text("Confirmar contraseña")
+                    innerTextField()
+                }
+            }
+        )
+
+        Button(onClick = {
+            if (newPassword == confirmPassword) {
+                saveNewPassword(context, newPassword)
+                onPasswordReset() // Navegar de vuelta al login
+            } else {
+                Toast.makeText(context, "Las contraseñas no coinciden", Toast.LENGTH_SHORT).show()
+            }
+        }) {
+            Text("Cambiar contraseña")
         }
     }
 }
@@ -527,6 +688,59 @@ fun readUserDataFromFile(context: android.content.Context, alias: String): User?
         }
     }
     return null
+}
+
+fun readUserDataByEmail(context: android.content.Context, email: String): User? {
+    val file = File(context.filesDir, "users.txt")
+    if (file.exists()) {
+        val lines = file.readLines()
+        for (line in lines) {
+            val parts = line.split(",")
+            if (parts.size == 7 && parts[2] == email) {
+                return User(
+                    alias = parts[0],
+                    fullName = parts[1],
+                    email = parts[2],
+                    password = parts[3],
+                    age = parts[4].toInt(),
+                    houseType = parts[5],
+                    vehicleType = parts[6]
+                )
+            }
+        }
+    }
+    return null
+}
+
+fun sendRecoveryCode(context: android.content.Context, email: String) {
+    val code = (10000..99999).random().toString()
+    val sharedPreferences = context.getSharedPreferences("RecoveryPrefs", android.content.Context.MODE_PRIVATE)
+    sharedPreferences.edit().putString("recovery_code", code).putString("recovery_email", email).apply()
+
+    // Simulación de envío del código
+    Toast.makeText(context, "Código enviado: $code", Toast.LENGTH_LONG).show()
+}
+
+fun saveNewPassword(context: android.content.Context, newPassword: String) {
+    val sharedPreferences = context.getSharedPreferences("RecoveryPrefs", android.content.Context.MODE_PRIVATE)
+    val email = sharedPreferences.getString("recovery_email", "")
+
+    if (email != null && email.isNotEmpty()) {
+        val file = File(context.filesDir, "users.txt")
+        if (file.exists()) {
+            val lines = file.readLines().toMutableList()
+            val updatedLines = lines.map { line ->
+                val parts = line.split(",")
+                if (parts.size == 7 && parts[2] == email) {
+                    "${parts[0]},${parts[1]},$email,$newPassword,${parts[4]},${parts[5]},${parts[6]}"
+                } else {
+                    line
+                }
+            }
+            file.writeText(updatedLines.joinToString("\n"))
+            Toast.makeText(context, "Contraseña actualizada exitosamente", Toast.LENGTH_SHORT).show()
+        }
+    }
 }
 
 // Función para leer todos los usuarios
