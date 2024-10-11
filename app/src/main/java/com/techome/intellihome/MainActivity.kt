@@ -88,18 +88,19 @@ class MainActivity : ComponentActivity() {
 
 // Clase usuario actualizada para incluir tipo de casa y tipo de vehículo
 data class User(
-    val alias: String,
-    val fullName: String,
-    val email: String,
+    var alias: String,
+    var fullName: String,
+    var email: String,
     var password: String,
     val age: Int,
-    val houseType: String,   // Nuevo campo para el tipo de casa
-    val vehicleType: String  // Nuevo campo para el tipo de vehículo
+    var houseType: String,   // Nuevo campo para el tipo de casa
+    var vehicleType: String  // Nuevo campo para el tipo de vehículo
 )
 
 var isAppEnabled by mutableStateOf(true) // Variable para habilitar/deshabilitar el aplicativo
 var isLoggedIn by mutableStateOf(false)  // Variable global para estado de sesión
 var isAdmin by mutableStateOf(false)     // Variable global para saber si el usuario es Admin
+var currentUser by mutableStateOf(User("A", "B", "C", "D", 1, "F", "G"))
 
 // Función para validar contraseñas
 fun isPasswordValid(password: String): Boolean {
@@ -165,6 +166,7 @@ fun LoginScreen(modifier: Modifier = Modifier, onForgotPassword: () -> Unit) {
 
             Button(onClick = {
                 val userData = readUserDataFromFile(context, username)
+                currentUser = readUserDataFromFile(context, username)
 
                 // Permitir solo al administrador iniciar sesión si la app está deshabilitada
                 if (!isAppEnabled && username != "Admin") {
@@ -417,7 +419,9 @@ fun AdminMenuScreen(context: android.content.Context) {
         LazyColumn(modifier = Modifier.fillMaxWidth()) {
             items(users) { user ->
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("${user.alias} - ${user.fullName}", modifier = Modifier.weight(1f))
@@ -450,22 +454,194 @@ fun AdminMenuScreen(context: android.content.Context) {
 // Pantalla del menú de usuario común
 @Composable
 fun UserMenuScreen() {
+    // Estado para controlar si el usuario está editando los datos
+    var isEditing by rememberSaveable { mutableStateOf(false) }
+
+    // Pantalla principal o pantalla de edición basada en el estado
+    if (isEditing) {
+        // Mostrar pantalla de edición de usuario
+        EditUserScreen(onSave = {
+            isEditing = false // Volver al menú del usuario una vez que se guardan los datos
+        })
+    } else {
+        // Mostrar pantalla del menú de usuario
+        UserMenuContent(onEdit = {
+            isEditing = true // Cambiar el estado a edición
+        })
+    }
+}
+
+@Composable
+fun UserMenuContent(onEdit: () -> Unit) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Bienvenido, Usuario")
+        Text("Bienvenido, ${currentUser.alias}")
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Botón para cerrar sesión
         Button(onClick = {
-            // Cerrar sesión (resetear el estado)
             isLoggedIn = false
             isAdmin = false
         }) {
             Text("Cerrar sesión")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Botón para editar datos
+        Button(onClick = {
+            onEdit() // Llama a la función de edición pasada por parámetro
+        }) {
+            Text("Editar datos")
+        }
+    }
+}
+
+@Composable
+fun EditUserScreen(onSave: () -> Unit) {
+    val context = LocalContext.current
+    var alias by rememberSaveable { mutableStateOf(currentUser.alias) }
+    var fullName by rememberSaveable { mutableStateOf(currentUser.fullName) }
+    var email by rememberSaveable { mutableStateOf(currentUser.email) }
+
+    // Selector de tipo de casa
+    val houseTypes = listOf("Apartamento Inteligente", "Apartamento Normal", "Casa Normal", "Casa con Apartamento")
+    var selectedHouseType by rememberSaveable { mutableStateOf(currentUser.houseType) }
+    var expandedHouseType by rememberSaveable { mutableStateOf(false) }
+
+    // Selector de tipo de vehículo
+    val vehicleTypes = listOf("Bicicleta", "Carro", "Moto", "Otro")
+    var selectedVehicleType by rememberSaveable { mutableStateOf(currentUser.vehicleType) }
+    var expandedVehicleType by rememberSaveable { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Editar datos", style = MaterialTheme.typography.headlineSmall)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        BasicTextField(
+            value = alias,
+            onValueChange = { alias = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (alias.isEmpty()) Text("Usuario (alias)")
+                    innerTextField()
+                }
+            }
+        )
+
+        BasicTextField(
+            value = fullName,
+            onValueChange = { fullName = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (fullName.isEmpty()) Text("Nombre completo")
+                    innerTextField()
+                }
+            }
+        )
+
+        BasicTextField(
+            value = email,
+            onValueChange = { email = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (email.isEmpty()) Text("Correo electrónico")
+                    innerTextField()
+                }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Selector de tipo de casa
+        Text("Seleccione el tipo de casa:")
+        Box {
+            Button(onClick = { expandedHouseType = !expandedHouseType }) {
+                Text(selectedHouseType)
+            }
+            DropdownMenu(
+                expanded = expandedHouseType,
+                onDismissRequest = { expandedHouseType = false }
+            ) {
+                houseTypes.forEach { houseType ->
+                    DropdownMenuItem(
+                        text = { Text(houseType) },
+                        onClick = {
+                            selectedHouseType = houseType
+                            expandedHouseType = false
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Selector de tipo de vehículo
+        Text("Seleccione el tipo de vehículo:")
+        Box {
+            Button(onClick = { expandedVehicleType = !expandedVehicleType }) {
+                Text(selectedVehicleType)
+            }
+            DropdownMenu(
+                expanded = expandedVehicleType,
+                onDismissRequest = { expandedVehicleType = false }
+            ) {
+                vehicleTypes.forEach { vehicleType ->
+                    DropdownMenuItem(
+                        text = { Text(vehicleType) },
+                        onClick = {
+                            selectedVehicleType = vehicleType
+                            expandedVehicleType = false
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = {
+            val OldUser = currentUser.alias
+            // Guardar los cambios
+            currentUser.alias = alias
+            currentUser.fullName = fullName
+            currentUser.email = email
+            currentUser.houseType = selectedHouseType
+            currentUser.vehicleType = selectedVehicleType
+
+            onSave()  // Llamar al callback de guardado
+            saveUserToFile(context, currentUser) //Guarda informacion nueva
+            deleteUserFromFile(context, OldUser) //Elimina informacion anterior
+        }) {
+            Text("Guardar cambios")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = onSave) {
+            Text("Cancelar")
         }
     }
 }
@@ -668,7 +844,7 @@ fun RegisterUserScreen(onBack: () -> Unit) {
 }
 
 // Función para leer los datos de usuario desde el archivo
-fun readUserDataFromFile(context: android.content.Context, alias: String): User? {
+fun readUserDataFromFile(context: android.content.Context, alias: String): User {
     val file = File(context.filesDir, "users.txt")
     if (file.exists()) {
         val lines = file.readLines()
@@ -687,7 +863,7 @@ fun readUserDataFromFile(context: android.content.Context, alias: String): User?
             }
         }
     }
-    return null
+    return User("A", "B", "C", "D", 1, "F", "G")
 }
 
 fun readUserDataByEmail(context: android.content.Context, email: String): User? {
@@ -792,6 +968,21 @@ fun isUserAlreadyRegistered(context: android.content.Context, alias: String, ema
 fun saveUserToFile(context: android.content.Context, user: User) {
     val file = File(context.filesDir, "users.txt")
     file.appendText("${user.alias},${user.fullName},${user.email},${user.password},${user.age},${user.houseType},${user.vehicleType}\n")
+}
+
+fun deleteUserFromFile(context: android.content.Context, userAlias: String) {
+    val file = File(context.filesDir, "users.txt")
+
+    if (file.exists()) {
+        // Leer todas las líneas del archivo
+        val lines = file.readLines().toMutableList()
+
+        // Filtrar las líneas que no corresponden al usuario que deseas eliminar
+        val updatedLines = lines.filter { !it.startsWith("$userAlias,") }
+
+        // Sobrescribir el archivo con las líneas actualizadas
+        file.writeText(updatedLines.joinToString("\n"))
+    }
 }
 
 // Función para actualizar la contraseña del Admin en el archivo
