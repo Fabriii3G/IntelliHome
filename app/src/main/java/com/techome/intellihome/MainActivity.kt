@@ -24,15 +24,29 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.pm.PackageManager
 import android.os.Build
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import java.io.File
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Solicitar permisos para notificaciones en Android 13 o superior
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+            }
+        }
 
         // Asegurarse de que el usuario Admin esté en el archivo
         addDefaultAdminUser()
@@ -53,28 +67,37 @@ class MainActivity : ComponentActivity() {
         val file = File(filesDir, "users.txt")
         if (!file.exists() || !file.readText().contains("Admin")) {
             // Si no existe el usuario Admin, lo agregamos
-            file.appendText("Admin,Administrador,admin@tec.com,TEC2024,30\n")
+            file.appendText("Admin,Administrador,admin@tec.com,TEC2024,30,Apartamento Inteligente,Carro\n")
         }
     }
 }
 
-// Clase usuario
+// Clase usuario actualizada para incluir tipo de casa y tipo de vehículo
 data class User(
     val alias: String,
     val fullName: String,
     val email: String,
     var password: String,
     val age: Int,
+    val houseType: String,   // Nuevo campo para el tipo de casa
+    val vehicleType: String  // Nuevo campo para el tipo de vehículo
 )
 
 var isAppEnabled by mutableStateOf(true) // Variable para habilitar/deshabilitar el aplicativo
+var isLoggedIn by mutableStateOf(false)  // Variable global para estado de sesión
+var isAdmin by mutableStateOf(false)     // Variable global para saber si el usuario es Admin
+
+// Función para validar contraseñas
+fun isPasswordValid(password: String): Boolean {
+    val passwordPattern = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#\$%^&+=!])(?=\\S+\$).{8,}\$"
+    val passwordMatcher = Regex(passwordPattern)
+    return passwordMatcher.matches(password)
+}
 
 @Composable
 fun LoginScreen(modifier: Modifier = Modifier) {
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    var isLoggedIn by rememberSaveable { mutableStateOf(false) }
-    var isAdmin by rememberSaveable { mutableStateOf(false) }
     var showRegister by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -87,15 +110,16 @@ fun LoginScreen(modifier: Modifier = Modifier) {
     } else if (showRegister) {
         RegisterUserScreen(onBack = { showRegister = false })
     } else {
-        if (!isAppEnabled) {
-            Toast.makeText(context, "El aplicativo está deshabilitado", Toast.LENGTH_SHORT).show()
-            return
-        }
         Column(
             modifier = modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Mostrar mensaje si el aplicativo está deshabilitado
+            if (!isAppEnabled) {
+                Text("El aplicativo está deshabilitado. Solo el administrador puede iniciar sesión.", Modifier.padding(16.dp))
+            }
+
             BasicTextField(
                 value = username,
                 onValueChange = { username = it },
@@ -109,6 +133,7 @@ fun LoginScreen(modifier: Modifier = Modifier) {
                     }
                 }
             )
+
             BasicTextField(
                 value = password,
                 onValueChange = { password = it },
@@ -123,8 +148,16 @@ fun LoginScreen(modifier: Modifier = Modifier) {
                     }
                 }
             )
+
             Button(onClick = {
                 val userData = readUserDataFromFile(context, username)
+
+                // Permitir solo al administrador iniciar sesión si la app está deshabilitada
+                if (!isAppEnabled && username != "Admin") {
+                    Toast.makeText(context, "El aplicativo está deshabilitado. Solo el administrador puede iniciar sesión.", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
                 if (username == "Admin" && password == "TEC2024") {
                     isLoggedIn = true
                     isAdmin = true
@@ -145,13 +178,14 @@ fun LoginScreen(modifier: Modifier = Modifier) {
                 Text("Login")
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Botón para registrar nuevo usuario
-            Button(onClick = {
-                showRegister = true
-            }) {
-                Text("Registrar nuevo usuario")
+            // Mostrar el botón de registro solo si la app está habilitada
+            if (isAppEnabled) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = {
+                    showRegister = true
+                }) {
+                    Text("Registrar nuevo usuario")
+                }
             }
         }
     }
@@ -161,6 +195,14 @@ fun LoginScreen(modifier: Modifier = Modifier) {
 @Composable
 fun AdminMenuScreen(context: android.content.Context) {
     var newPassword by rememberSaveable { mutableStateOf("") }
+    val users = remember { mutableStateListOf<User>() }
+
+    // Leer todos los usuarios al iniciar la pantalla
+    LaunchedEffect(Unit) {
+        users.clear()
+        users.addAll(readAllUsers(context))
+    }
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
@@ -206,6 +248,41 @@ fun AdminMenuScreen(context: android.content.Context) {
         }) {
             Text("Cambiar Contraseña")
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Lista de usuarios
+        Text("Lista de usuarios:")
+        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+            items(users) { user ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("${user.alias} - ${user.fullName}", modifier = Modifier.weight(1f))
+                    Button(onClick = {
+                        // Función para actualizar a Admin
+                        if (user.alias != "Admin") {
+                            makeUserAdmin(context, user)
+                            Toast.makeText(context, "${user.alias} ahora es administrador", Toast.LENGTH_SHORT).show()
+                        }
+                    }) {
+                        Text("Hacer Admin")
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Botón para cerrar sesión
+        Button(onClick = {
+            // Cerrar sesión (resetear el estado)
+            isLoggedIn = false
+            isAdmin = false
+        }) {
+            Text("Cerrar sesión")
+        }
     }
 }
 
@@ -218,19 +295,39 @@ fun UserMenuScreen() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("Bienvenido, Usuario")
-        // Funcionalidades para usuarios comunes
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Botón para cerrar sesión
+        Button(onClick = {
+            // Cerrar sesión (resetear el estado)
+            isLoggedIn = false
+            isAdmin = false
+        }) {
+            Text("Cerrar sesión")
+        }
     }
 }
 
-// Pantalla de registro de usuario
+// Pantalla de registro de usuario actualizada con validación de contraseña
 @Composable
 fun RegisterUserScreen(onBack: () -> Unit) {
     var alias by rememberSaveable { mutableStateOf("") }
     var fullName by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    var age by rememberSaveable { mutableStateOf(18) } // Nueva variable para la edad
+    var age by rememberSaveable { mutableStateOf(18) }
     val context = LocalContext.current
+
+    // Nueva variable para el tipo de casa
+    val houseTypes = listOf("Apartamento Inteligente", "Apartamento Normal", "Casa Normal", "Casa con Apartamento")
+    var selectedHouseType by rememberSaveable { mutableStateOf(houseTypes[0]) }
+    var expandedHouseType by rememberSaveable { mutableStateOf(false) }
+
+    // Nueva variable para el tipo de vehículo
+    val vehicleTypes = listOf("Bicicleta", "Carro", "Moto", "Otro")
+    var selectedVehicleType by rememberSaveable { mutableStateOf(vehicleTypes[0]) }
+    var expandedVehicleType by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -300,6 +397,62 @@ fun RegisterUserScreen(onBack: () -> Unit) {
             }
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Mostrar requisitos de contraseña
+        Text(
+            text = "La contraseña debe tener al menos 8 caracteres, una letra mayúscula, una letra minúscula, un número y un carácter especial.",
+            modifier = Modifier.padding(16.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Selector de tipo de casa
+        Text("Seleccione el tipo de casa:")
+        Box {
+            Button(onClick = { expandedHouseType = !expandedHouseType }) {
+                Text(selectedHouseType)
+            }
+            DropdownMenu(
+                expanded = expandedHouseType,
+                onDismissRequest = { expandedHouseType = false }
+            ) {
+                houseTypes.forEach { houseType ->
+                    DropdownMenuItem(
+                        text = { Text(houseType) },
+                        onClick = {
+                            selectedHouseType = houseType
+                            expandedHouseType = false
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Selector de tipo de vehículo
+        Text("Seleccione el tipo de vehículo:")
+        Box {
+            Button(onClick = { expandedVehicleType = !expandedVehicleType }) {
+                Text(selectedVehicleType)
+            }
+            DropdownMenu(
+                expanded = expandedVehicleType,
+                onDismissRequest = { expandedVehicleType = false }
+            ) {
+                vehicleTypes.forEach { vehicleType ->
+                    DropdownMenuItem(
+                        text = { Text(vehicleType) },
+                        onClick = {
+                            selectedVehicleType = vehicleType
+                            expandedVehicleType = false
+                        }
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         // Selector de edad
@@ -312,7 +465,7 @@ fun RegisterUserScreen(onBack: () -> Unit) {
                 value = age.toString(),
                 onValueChange = { newValue ->
                     val parsedValue = newValue.toIntOrNull() ?: 18
-                    age = parsedValue.coerceIn(1, 120) // Limitar la edad entre 1 y 120
+                    age = parsedValue.coerceIn(1, 120)
                 },
                 modifier = Modifier
                     .padding(start = 8.dp)
@@ -324,10 +477,20 @@ fun RegisterUserScreen(onBack: () -> Unit) {
 
         Button(onClick = {
             if (alias.isNotEmpty() && fullName.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty()) {
-                val newUser = User(alias, fullName, email, password, age)
-                saveUserToFile(context, newUser)
-                Toast.makeText(context, "Usuario registrado con éxito", Toast.LENGTH_SHORT).show()
-                onBack() // Regresar a la pantalla de inicio de sesión
+                if (!isPasswordValid(password)) {
+                    Toast.makeText(
+                        context,
+                        "La contraseña no cumple con los requisitos.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else if (isUserAlreadyRegistered(context, alias, email)) {
+                    Toast.makeText(context, "El alias o correo ya están en uso, elija otros", Toast.LENGTH_SHORT).show()
+                } else {
+                    val newUser = User(alias, fullName, email, password, age, selectedHouseType, selectedVehicleType)
+                    saveUserToFile(context, newUser)
+                    Toast.makeText(context, "Usuario registrado con éxito", Toast.LENGTH_SHORT).show()
+                    onBack()
+                }
             } else {
                 Toast.makeText(context, "Por favor complete todos los campos", Toast.LENGTH_SHORT).show()
             }
@@ -350,13 +513,15 @@ fun readUserDataFromFile(context: android.content.Context, alias: String): User?
         val lines = file.readLines()
         for (line in lines) {
             val parts = line.split(",")
-            if (parts.size == 5 && parts[0] == alias) {
+            if (parts.size == 7 && parts[0] == alias) {
                 return User(
                     alias = parts[0],
                     fullName = parts[1],
                     email = parts[2],
                     password = parts[3],
-                    age = parts[4].toInt() // Convertir el campo de edad a entero
+                    age = parts[4].toInt(), // Convertir el campo de edad a entero
+                    houseType = parts[5],
+                    vehicleType = parts[6]
                 )
             }
         }
@@ -364,10 +529,55 @@ fun readUserDataFromFile(context: android.content.Context, alias: String): User?
     return null
 }
 
+// Función para leer todos los usuarios
+fun readAllUsers(context: android.content.Context): List<User> {
+    val file = File(context.filesDir, "users.txt")
+    val users = mutableListOf<User>()
+    if (file.exists()) {
+        val lines = file.readLines()
+        for (line in lines) {
+            val parts = line.split(",")
+            if (parts.size == 7) {
+                users.add(
+                    User(
+                        alias = parts[0],
+                        fullName = parts[1],
+                        email = parts[2],
+                        password = parts[3],
+                        age = parts[4].toInt(),
+                        houseType = parts[5],
+                        vehicleType = parts[6]
+                    )
+                )
+            }
+        }
+    }
+    return users
+}
+
+// Función para verificar si el alias o el correo ya existen
+fun isUserAlreadyRegistered(context: android.content.Context, alias: String, email: String): Boolean {
+    val file = File(context.filesDir, "users.txt")
+    if (file.exists()) {
+        val lines = file.readLines()
+        for (line in lines) {
+            val parts = line.split(",")
+            if (parts.size == 7) {
+                val existingAlias = parts[0]
+                val existingEmail = parts[2]
+                if (existingAlias == alias || existingEmail == email) {
+                    return true // Alias o correo ya están en uso
+                }
+            }
+        }
+    }
+    return false
+}
+
 // Función para guardar los datos de usuario en un archivo
 fun saveUserToFile(context: android.content.Context, user: User) {
     val file = File(context.filesDir, "users.txt")
-    file.appendText("${user.alias},${user.fullName},${user.email},${user.password},${user.age}\n")
+    file.appendText("${user.alias},${user.fullName},${user.email},${user.password},${user.age},${user.houseType},${user.vehicleType}\n")
 }
 
 // Función para actualizar la contraseña del Admin en el archivo
@@ -378,7 +588,24 @@ fun updateAdminPassword(context: android.content.Context, newPassword: String) {
         val newLines = lines.map { line ->
             if (line.startsWith("Admin")) {
                 val parts = line.split(",")
-                "Admin,${parts[1]},${parts[2]},$newPassword,${parts[4]}"
+                "Admin,${parts[1]},${parts[2]},$newPassword,${parts[4]},${parts[5]},${parts[6]}"
+            } else {
+                line
+            }
+        }
+        file.writeText(newLines.joinToString("\n"))
+    }
+}
+
+// Función para hacer a un usuario administrador
+fun makeUserAdmin(context: android.content.Context, user: User) {
+    val file = File(context.filesDir, "users.txt")
+    if (file.exists()) {
+        val lines = file.readLines()
+        val newLines = lines.map { line ->
+            val parts = line.split(",")
+            if (parts[0] == user.alias) {
+                "${user.alias},Administrador,${user.email},${user.password},${user.age},${user.houseType},${user.vehicleType}"
             } else {
                 line
             }
