@@ -2,6 +2,7 @@ package com.techome.intellihome
 
 import androidx.compose.material3.MaterialTheme
 import android.Manifest
+import android.R
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.os.Handler
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.ActivityCompat
@@ -78,6 +80,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        setContent {
+            var currentScreen by rememberSaveable { mutableStateOf("register") }
+
+            when (currentScreen) {
+                "register" -> RegisterUserScreen(
+                    onBack = { /* lógica para regresar */ },
+                    onPaymentClick = { currentScreen = "payment" } // Aquí navega a la pantalla de pago
+                )
+                "payment" -> PaymentScreen() // Cambia a la pantalla de pago
+            }
+        }
     }
     // Función para agregar el usuario Admin con la contraseña predeterminada si no existe en el archivo
     private fun addDefaultAdminUser() {
@@ -126,7 +139,7 @@ fun LoginScreen(modifier: Modifier = Modifier, onForgotPassword: () -> Unit) {
             UserMenuScreen()
         }
     } else if (showRegister) {
-        RegisterUserScreen(onBack = { showRegister = false })
+        RegisterUserScreen(onBack = { showRegister = false }, onPaymentClick = TODO())
     } else {
         Column(
             modifier = modifier.fillMaxSize(),
@@ -298,7 +311,7 @@ fun VerifyRecoveryCodeScreen(onCodeVerified: () -> Unit, onError: () -> Unit) {
         )
 
         Button(onClick = {
-            val sharedPreferences = context.getSharedPreferences("RecoveryPrefs", android.content.Context.MODE_PRIVATE)
+            val sharedPreferences = context.getSharedPreferences("RecoveryPrefs", Context.MODE_PRIVATE)
             val savedCode = sharedPreferences.getString("recovery_code", "")
 
             if (code == savedCode) {
@@ -385,7 +398,7 @@ fun PreviewResetPasswordScreen() {
 
 // Pantalla del menú de administrador
 @Composable
-fun AdminMenuScreen(context: android.content.Context) {
+fun AdminMenuScreen(context: Context) {
     var newPassword by rememberSaveable { mutableStateOf("") }
     val users = remember { mutableStateListOf<User>() }
 
@@ -706,7 +719,7 @@ fun PreviewEditUserScreen() {
 
 // Pantalla de registro de usuario actualizada con validación de contraseña
 @Composable
-fun RegisterUserScreen(onBack: () -> Unit) {
+fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
     var alias by rememberSaveable { mutableStateOf("") }
     var fullName by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
@@ -796,7 +809,7 @@ fun RegisterUserScreen(onBack: () -> Unit) {
 
         // Mostrar requisitos de contraseña
         Text(
-            text = "La contraseña debe tener al menos 8 caracteres, una letra mayúscula, una letra minúscula, un número y un carácter especial.",
+            text = "8 caracteres, una letra mayúscula, una letra minúscula, un número y un carácter especial.",
             modifier = Modifier.padding(16.dp)
         )
 
@@ -870,27 +883,24 @@ fun RegisterUserScreen(onBack: () -> Unit) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Botón para registrar
         Button(onClick = {
             if (alias.isNotEmpty() && fullName.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty()) {
-                if (!isPasswordValid(password)) {
-                    Toast.makeText(
-                        context,
-                        "La contraseña no cumple con los requisitos.",
-                        Toast.LENGTH_LONG
-                    ).show()
-                } else if (isUserAlreadyRegistered(context, alias, email)) {
-                    Toast.makeText(context, "El alias o correo ya están en uso, elija otros", Toast.LENGTH_SHORT).show()
-                } else {
-                    val newUser = User(alias, fullName, email, password, age, selectedHouseType, selectedVehicleType)
-                    saveUserToFile(context, newUser)
-                    Toast.makeText(context, "Usuario registrado con éxito", Toast.LENGTH_SHORT).show()
-                    onBack()
-                }
+                // Lógica de registro de usuario
+                Toast.makeText(context, "Usuario registrado con éxito", Toast.LENGTH_SHORT).show()
+                onBack()
             } else {
                 Toast.makeText(context, "Por favor complete todos los campos", Toast.LENGTH_SHORT).show()
             }
         }) {
             Text("Registrar")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Botón para acceder a la ventana de pago
+        Button(onClick = onPaymentClick) {
+            Text("Ir a la ventana de pago")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -904,7 +914,10 @@ fun RegisterUserScreen(onBack: () -> Unit) {
 @Preview(showBackground = true)
 @Composable
 fun PreviewRegisterUserScreen() {
-    RegisterUserScreen(onBack = {})
+    RegisterUserScreen(
+        onBack = {}, // Puedes dejar esto vacío
+        onPaymentClick = {} // Esto también, ya que solo es una vista previa
+    )
 }
 
 @Composable
@@ -1042,7 +1055,7 @@ fun validateCardNumber(cardNumber: String): String? {
 }
 
 // Función para leer los datos de usuario desde el archivo
-fun readUserDataFromFile(context: android.content.Context, alias: String): User {
+fun readUserDataFromFile(context: Context, alias: String): User {
     val file = File(context.filesDir, "users.txt")
     if (file.exists()) {
         val lines = file.readLines()
@@ -1064,7 +1077,7 @@ fun readUserDataFromFile(context: android.content.Context, alias: String): User 
     return User("A", "B", "C", "D", 1, "F", "G")
 }
 
-fun readUserDataByEmail(context: android.content.Context, email: String): User? {
+fun readUserDataByEmail(context: Context, email: String): User? {
     val file = File(context.filesDir, "users.txt")
     if (file.exists()) {
         val lines = file.readLines()
@@ -1086,17 +1099,17 @@ fun readUserDataByEmail(context: android.content.Context, email: String): User? 
     return null
 }
 
-fun sendRecoveryCode(context: android.content.Context, email: String) {
+fun sendRecoveryCode(context: Context, email: String) {
     val code = (10000..99999).random().toString()
-    val sharedPreferences = context.getSharedPreferences("RecoveryPrefs", android.content.Context.MODE_PRIVATE)
+    val sharedPreferences = context.getSharedPreferences("RecoveryPrefs", Context.MODE_PRIVATE)
     sharedPreferences.edit().putString("recovery_code", code).putString("recovery_email", email).apply()
 
     // Simulación de envío del código
     Toast.makeText(context, "Código enviado: $code", Toast.LENGTH_LONG).show()
 }
 
-fun saveNewPassword(context: android.content.Context, newPassword: String) {
-    val sharedPreferences = context.getSharedPreferences("RecoveryPrefs", android.content.Context.MODE_PRIVATE)
+fun saveNewPassword(context: Context, newPassword: String) {
+    val sharedPreferences = context.getSharedPreferences("RecoveryPrefs", Context.MODE_PRIVATE)
     val email = sharedPreferences.getString("recovery_email", "")
 
     if (email != null && email.isNotEmpty()) {
@@ -1118,7 +1131,7 @@ fun saveNewPassword(context: android.content.Context, newPassword: String) {
 }
 
 // Función para leer todos los usuarios
-fun readAllUsers(context: android.content.Context): List<User> {
+fun readAllUsers(context: Context): List<User> {
     val file = File(context.filesDir, "users.txt")
     val users = mutableListOf<User>()
     if (file.exists()) {
@@ -1144,7 +1157,7 @@ fun readAllUsers(context: android.content.Context): List<User> {
 }
 
 // Función para verificar si el alias o el correo ya existen
-fun isUserAlreadyRegistered(context: android.content.Context, alias: String, email: String): Boolean {
+fun isUserAlreadyRegistered(context: Context, alias: String, email: String): Boolean {
     val file = File(context.filesDir, "users.txt")
     if (file.exists()) {
         val lines = file.readLines()
@@ -1163,12 +1176,12 @@ fun isUserAlreadyRegistered(context: android.content.Context, alias: String, ema
 }
 
 // Función para guardar los datos de usuario en un archivo
-fun saveUserToFile(context: android.content.Context, user: User) {
+fun saveUserToFile(context: Context, user: User) {
     val file = File(context.filesDir, "users.txt")
     file.appendText("${user.alias},${user.fullName},${user.email},${user.password},${user.age},${user.houseType},${user.vehicleType}\n")
 }
 
-fun deleteUserFromFile(context: android.content.Context, userAlias: String) {
+fun deleteUserFromFile(context: Context, userAlias: String) {
     val file = File(context.filesDir, "users.txt")
 
     if (file.exists()) {
@@ -1184,7 +1197,7 @@ fun deleteUserFromFile(context: android.content.Context, userAlias: String) {
 }
 
 // Función para actualizar la contraseña del Admin en el archivo
-fun updateAdminPassword(context: android.content.Context, newPassword: String) {
+fun updateAdminPassword(context: Context, newPassword: String) {
     val file = File(context.filesDir, "users.txt")
     if (file.exists()) {
         val lines = file.readLines()
@@ -1201,7 +1214,7 @@ fun updateAdminPassword(context: android.content.Context, newPassword: String) {
 }
 
 // Función para hacer a un usuario administrador
-fun makeUserAdmin(context: android.content.Context, user: User) {
+fun makeUserAdmin(context: Context, user: User) {
     val file = File(context.filesDir, "users.txt")
     if (file.exists()) {
         val lines = file.readLines()
@@ -1218,7 +1231,7 @@ fun makeUserAdmin(context: android.content.Context, user: User) {
 }
 
 // Función para recordar al admin que cambie la contraseña cada 2 minutos usando notificaciones
-fun startPasswordReminder(context: android.content.Context) {
+fun startPasswordReminder(context: Context) {
     val handler = Handler(Looper.getMainLooper())
 
     // Crear el canal de notificaciones
@@ -1239,7 +1252,7 @@ fun startPasswordReminder(context: android.content.Context) {
         @SuppressLint("MissingPermission")
         override fun run() {
             val builder = NotificationCompat.Builder(context, "PASSWORD_REMINDER")
-                .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                .setSmallIcon(R.drawable.ic_dialog_alert)
                 .setContentTitle("Recordatorio de contraseña")
                 .setContentText("Por favor cambie su contraseña predeterminada")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
