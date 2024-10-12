@@ -35,7 +35,9 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 
 
@@ -905,6 +907,138 @@ fun PreviewRegisterUserScreen() {
     RegisterUserScreen(onBack = {})
 }
 
+@Composable
+fun PaymentScreen() {
+    var cardholderName by rememberSaveable { mutableStateOf("") }
+    var cardNumber by rememberSaveable { mutableStateOf("") }
+    var expiryDate by rememberSaveable { mutableStateOf("") }
+    var securityCode by rememberSaveable { mutableStateOf("") }
+    var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var cardBrand by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Nombre del Tarjetahabiente
+        BasicTextField(
+            value = cardholderName,
+            onValueChange = { cardholderName = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (cardholderName.isEmpty()) Text("Nombre del Tarjetahabiente")
+                    innerTextField()
+                }
+            }
+        )
+
+        // Número de tarjeta
+        BasicTextField(
+            value = cardNumber,
+            onValueChange = {
+                if (it.length <= 16) {
+                    cardNumber = it
+                    validateCardNumber(it)?.let { brand ->
+                        cardBrand = brand
+                        errorMessage = null
+                    } ?: run {
+                        errorMessage = "Número de tarjeta inválido"
+                    }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (cardNumber.isEmpty()) Text("Número de tarjeta (16 dígitos)")
+                    innerTextField()
+                }
+            }
+        )
+
+        // Fecha de validez (Mes/Año)
+        BasicTextField(
+            value = expiryDate,
+            onValueChange = { expiryDate = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (expiryDate.isEmpty()) Text("Fecha de Validez (MM/AA)")
+                    innerTextField()
+                }
+            }
+        )
+
+        // Número verificador
+        BasicTextField(
+            value = securityCode,
+            onValueChange = {
+                if (it.length <= 4) {
+                    securityCode = it
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (securityCode.isEmpty()) Text("Número Verificador (4 dígitos)")
+                    innerTextField()
+                }
+            }
+        )
+
+        // Mensajes de error y marca de la tarjeta
+        if (errorMessage != null) {
+            Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
+        } else if (cardBrand != null) {
+            Text(text = "Marca de la tarjeta: $cardBrand", modifier = Modifier.padding(8.dp))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Botón para confirmar el pago
+        Button(onClick = {
+            if (cardNumber.length == 16 && securityCode.length == 4 && cardBrand != null) {
+                Toast.makeText(context, "Pago procesado con éxito", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(context, "Verifica la información ingresada", Toast.LENGTH_LONG).show()
+            }
+        }) {
+            Text("Confirmar Pago")
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewPaymentScreen() {
+    PaymentScreen()
+}
+
+// Función para validar el número de tarjeta y determinar la marca
+fun validateCardNumber(cardNumber: String): String? {
+    return when (cardNumber.firstOrNull()) {
+        '1' -> "Visca"
+        '2' -> "MasterChef"
+        '3' -> "AmericanCity"
+        '5' -> "TicaPay"
+        else -> null
+    }
+}
 
 // Función para leer los datos de usuario desde el archivo
 fun readUserDataFromFile(context: android.content.Context, alias: String): User {
