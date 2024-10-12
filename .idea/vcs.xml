@@ -3,5 +3,6 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/IntelliHome" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/IntelliHome/IntelliHome" vcs="Git" />
   </component>
 </project>

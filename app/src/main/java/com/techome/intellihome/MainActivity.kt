@@ -36,6 +36,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.tooling.preview.Preview
 
 
 class MainActivity : ComponentActivity() {
@@ -179,7 +180,7 @@ fun LoginScreen(modifier: Modifier = Modifier, onForgotPassword: () -> Unit) {
                     isAdmin = true
                     Toast.makeText(context, "Ingreso exitoso como Admin", Toast.LENGTH_SHORT).show()
                     startPasswordReminder(context) // Inicia recordatorio de contraseña
-                } else if (userData != null && userData.password == password) {
+                } else if (userData.password == password) {
                     isLoggedIn = true
                     isAdmin = false
                     Toast.makeText(context, "Ingreso exitoso", Toast.LENGTH_SHORT).show()
@@ -209,6 +210,13 @@ fun LoginScreen(modifier: Modifier = Modifier, onForgotPassword: () -> Unit) {
             }
         }
     }
+}
+
+//Funcion para poder previsualizar el codigo
+@Preview(showBackground = true)
+@Composable
+fun PreviewLoginScreen() {
+    LoginScreen(onForgotPassword = {})
 }
 
 @Composable
@@ -253,6 +261,12 @@ fun RequestPasswordResetScreen(onEmailSent: () -> Unit) {
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun PreviewRequestPasswordResetScreen() {
+    RequestPasswordResetScreen(onEmailSent = {})
+}
+
 @Composable
 fun VerifyRecoveryCodeScreen(onCodeVerified: () -> Unit, onError: () -> Unit) {
     var code by rememberSaveable { mutableStateOf("") }
@@ -294,6 +308,12 @@ fun VerifyRecoveryCodeScreen(onCodeVerified: () -> Unit, onError: () -> Unit) {
             Text("Verificar código")
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewVerifyRecoveryCodeScreen() {
+    VerifyRecoveryCodeScreen(onCodeVerified = {}, onError = {})
 }
 
 @Composable
@@ -353,6 +373,13 @@ fun ResetPasswordScreen(onPasswordReset: () -> Unit) {
         }
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewResetPasswordScreen() {
+    ResetPasswordScreen(onPasswordReset = {})
+}
+
 
 // Pantalla del menú de administrador
 @Composable
@@ -451,6 +478,14 @@ fun AdminMenuScreen(context: android.content.Context) {
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun PreviewAdminMenuScreen() {
+    val context = LocalContext.current // Necesario para el contexto
+    AdminMenuScreen(context = context)
+}
+
+
 // Pantalla del menú de usuario común
 @Composable
 fun UserMenuScreen() {
@@ -470,6 +505,13 @@ fun UserMenuScreen() {
         })
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewUserMenuScreen() {
+    UserMenuScreen()
+}
+
 
 @Composable
 fun UserMenuContent(onEdit: () -> Unit) {
@@ -501,6 +543,13 @@ fun UserMenuContent(onEdit: () -> Unit) {
         }
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewUserMenuContent() {
+    UserMenuContent(onEdit = {})
+}
+
 
 @Composable
 fun EditUserScreen(onSave: () -> Unit) {
@@ -623,7 +672,7 @@ fun EditUserScreen(onSave: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = {
-            val OldUser = currentUser.alias
+            val oldUser = currentUser.alias
             // Guardar los cambios
             currentUser.alias = alias
             currentUser.fullName = fullName
@@ -633,7 +682,7 @@ fun EditUserScreen(onSave: () -> Unit) {
 
             onSave()  // Llamar al callback de guardado
             saveUserToFile(context, currentUser) //Guarda informacion nueva
-            deleteUserFromFile(context, OldUser) //Elimina informacion anterior
+            deleteUserFromFile(context, oldUser) //Elimina informacion anterior
         }) {
             Text("Guardar cambios")
         }
@@ -645,6 +694,13 @@ fun EditUserScreen(onSave: () -> Unit) {
         }
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewEditUserScreen() {
+    EditUserScreen(onSave = {})
+}
+
 
 // Pantalla de registro de usuario actualizada con validación de contraseña
 @Composable
@@ -842,6 +898,13 @@ fun RegisterUserScreen(onBack: () -> Unit) {
         }
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewRegisterUserScreen() {
+    RegisterUserScreen(onBack = {})
+}
+
 
 // Función para leer los datos de usuario desde el archivo
 fun readUserDataFromFile(context: android.content.Context, alias: String): User {
