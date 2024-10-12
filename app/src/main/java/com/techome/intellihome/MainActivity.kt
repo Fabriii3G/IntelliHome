@@ -950,7 +950,8 @@ fun PaymentScreen() {
                         cardBrand = brand
                         errorMessage = null
                     } ?: run {
-                        errorMessage = "Número de tarjeta inválido"
+                        cardBrand = null
+                        errorMessage = "El número de tarjeta no es válido. Verifique el primer dígito."
                     }
                 }
             },
