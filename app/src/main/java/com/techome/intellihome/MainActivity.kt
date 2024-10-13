@@ -1,54 +1,65 @@
 package com.techome.intellihome
 
-import androidx.compose.material3.MaterialTheme
 import android.Manifest
 import android.R
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.*
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import java.io.File
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.TextButton
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
-import android.content.Intent
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.mutableStateListOf
 import coil.compose.AsyncImage
-
-
+import java.io.File
 
 
 class MainActivity : ComponentActivity() {
@@ -86,23 +97,17 @@ class MainActivity : ComponentActivity() {
                         )
                         "resetPassword" -> ResetPasswordScreen(
                             onPasswordReset = { currentScreen = "login" }
+                        )/*
+                        "register" -> RegisterUserScreen(
+                            onBack = { /* lógica para regresar */ },
+                            onPaymentClick = { currentScreen = "payment" } // Aquí navega a la pantalla de pago
                         )
+                        "payment" -> PaymentScreen() // Cambia a la pantalla de pago
+                        else -> {}*/
                     }
                 }
             }
         }
-        /*
-        setContent {
-            var currentScreen by rememberSaveable { mutableStateOf("register") }
-
-            when (currentScreen) {
-                "register" -> RegisterUserScreen(
-                    onBack = { /* lógica para regresar */ },
-                    onPaymentClick = { currentScreen = "payment" } // Aquí navega a la pantalla de pago
-                )
-                "payment" -> PaymentScreen() // Cambia a la pantalla de pago
-            }
-        }*/
     }
     // Función para agregar el usuario Admin con la contraseña predeterminada si no existe en el archivo
     private fun addDefaultAdminUser() {
@@ -160,7 +165,10 @@ fun LoginScreen(modifier: Modifier = Modifier, onForgotPassword: () -> Unit) {
             UserMenuScreen()
         }
     } else if (showRegister) {
-        RegisterUserScreen(onBack = { showRegister = false }, onPaymentClick = TODO())
+        RegisterUserScreen(
+            onBack = { showRegister = false },  // Volver a la pantalla de login
+            onPaymentClick = { var currentScreen = "payment" }  // Navega a la ventana de pago
+        )
     } else {
         Column(
             modifier = modifier.fillMaxSize(),
