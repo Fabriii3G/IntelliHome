@@ -83,27 +83,34 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     var currentScreen by rememberSaveable { mutableStateOf("login") }
 
+                    // Función para cambiar la pantalla
+                    fun changeScreen(screen: String) {
+                        currentScreen = screen
+                    }
+
                     when (currentScreen) {
                         "login" -> LoginScreen(
                             modifier = Modifier.padding(innerPadding),
-                            onForgotPassword = { currentScreen = "requestEmail" }
+                            onForgotPassword = { changeScreen("requestEmail") },
+                            onRegisterClick = { changeScreen("register") }  // Navega a la pantalla de registro
                         )
                         "requestEmail" -> RequestPasswordResetScreen(
-                            onEmailSent = { currentScreen = "verifyCode" }
+                            onEmailSent = { changeScreen("verifyCode") }
                         )
                         "verifyCode" -> VerifyRecoveryCodeScreen(
-                            onCodeVerified = { currentScreen = "resetPassword" },
-                            onError = { currentScreen = "requestEmail" }
+                            onCodeVerified = { changeScreen("resetPassword") },
+                            onError = { changeScreen("requestEmail") }
                         )
                         "resetPassword" -> ResetPasswordScreen(
-                            onPasswordReset = { currentScreen = "login" }
-                        )/*
-                        "register" -> RegisterUserScreen(
-                            onBack = { /* lógica para regresar */ },
-                            onPaymentClick = { currentScreen = "payment" } // Aquí navega a la pantalla de pago
+                            onPasswordReset = { changeScreen("login") }
                         )
-                        "payment" -> PaymentScreen() // Cambia a la pantalla de pago
-                        else -> {}*/
+                        "register" -> RegisterUserScreen(
+                            onBack = { changeScreen("login") },  // Vuelve a la pantalla de login
+                            onPaymentClick = { changeScreen("payment") }  // Navega a la pantalla de pago
+                        )
+                        "payment" -> PaymentScreen(
+                            onBack = { changeScreen("register") }  // Función para regresar a la pantalla de registro
+                        )
                     }
                 }
             }
@@ -152,10 +159,13 @@ fun isPasswordValid(password: String): Boolean {
 }
 
 @Composable
-fun LoginScreen(modifier: Modifier = Modifier, onForgotPassword: () -> Unit) {
+fun LoginScreen(
+    modifier: Modifier = Modifier,
+    onForgotPassword: () -> Unit,
+    onRegisterClick: () -> Unit // Se agrega este parámetro para manejar la navegación
+) {
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    var showRegister by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
 
     if (isLoggedIn) {
@@ -164,11 +174,6 @@ fun LoginScreen(modifier: Modifier = Modifier, onForgotPassword: () -> Unit) {
         } else {
             UserMenuScreen()
         }
-    } else if (showRegister) {
-        RegisterUserScreen(
-            onBack = { showRegister = false },  // Volver a la pantalla de login
-            onPaymentClick = { var currentScreen = "payment" }  // Navega a la ventana de pago
-        )
     } else {
         Column(
             modifier = modifier.fillMaxSize(),
@@ -180,6 +185,7 @@ fun LoginScreen(modifier: Modifier = Modifier, onForgotPassword: () -> Unit) {
                 Text("El aplicativo está deshabilitado. Solo el administrador puede iniciar sesión.", Modifier.padding(16.dp))
             }
 
+            // Campo para el nombre de usuario
             BasicTextField(
                 value = username,
                 onValueChange = { username = it },
@@ -194,6 +200,7 @@ fun LoginScreen(modifier: Modifier = Modifier, onForgotPassword: () -> Unit) {
                 }
             )
 
+            // Campo para la contraseña
             BasicTextField(
                 value = password,
                 onValueChange = { password = it },
@@ -209,6 +216,7 @@ fun LoginScreen(modifier: Modifier = Modifier, onForgotPassword: () -> Unit) {
                 }
             )
 
+            // Botón de login
             Button(onClick = {
                 val userData = readUserDataFromFile(context, username)
                 currentUser = readUserDataFromFile(context, username)
@@ -242,12 +250,11 @@ fun LoginScreen(modifier: Modifier = Modifier, onForgotPassword: () -> Unit) {
             // Mostrar el botón de registro solo si la app está habilitada
             if (isAppEnabled) {
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = {
-                    showRegister = true
-                }) {
+                Button(onClick = onRegisterClick) {  // Llama a onRegisterClick en lugar de modificar showRegister
                     Text("Registrar nuevo usuario")
                 }
             }
+
             Spacer(modifier = Modifier.height(16.dp))
             TextButton(onClick = onForgotPassword) {
                 Text("¿Olvidaste tu contraseña?")
@@ -256,12 +263,17 @@ fun LoginScreen(modifier: Modifier = Modifier, onForgotPassword: () -> Unit) {
     }
 }
 
+
 //Funcion para poder previsualizar el codigo
 @Preview(showBackground = true)
 @Composable
 fun PreviewLoginScreen() {
-    LoginScreen(onForgotPassword = {})
+    LoginScreen(
+        onForgotPassword = {},
+        onRegisterClick = {}
+    )
 }
+
 
 @Composable
 fun RequestPasswordResetScreen(onEmailSent: () -> Unit) {
@@ -1152,7 +1164,7 @@ fun PreviewRegisterUserScreen() {
 }
 
 @Composable
-fun PaymentScreen() {
+fun PaymentScreen(onBack: () -> Unit) {  // Aceptar un callback para volver
     var cardholderName by rememberSaveable { mutableStateOf("") }
     var cardNumber by rememberSaveable { mutableStateOf("") }
     var expiryDate by rememberSaveable { mutableStateOf("") }
@@ -1265,13 +1277,22 @@ fun PaymentScreen() {
         }) {
             Text("Confirmar Pago")
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Botón para volver a la pantalla de registro
+        Button(onClick = onBack) {
+            Text("Volver a Registro")
+        }
     }
 }
 
+
+// Preview para visualizar PaymentScreen
 @Preview(showBackground = true)
 @Composable
-fun PreviewPaymentScreen() {
-    PaymentScreen()
+fun PaymentScreenPreview() {
+    PaymentScreen(onBack = { /* Acción para volver */ })
 }
 
 // Función para validar el número de tarjeta y determinar la marca
