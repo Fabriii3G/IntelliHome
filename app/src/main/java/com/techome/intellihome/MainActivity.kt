@@ -41,9 +41,20 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.mutableStateListOf
+import coil.compose.AsyncImage
+
+
 
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        val globalHouseList = mutableListOf<HouseDetails>()
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -80,6 +91,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        /*
         setContent {
             var currentScreen by rememberSaveable { mutableStateOf("register") }
 
@@ -90,7 +102,7 @@ class MainActivity : ComponentActivity() {
                 )
                 "payment" -> PaymentScreen() // Cambia a la pantalla de pago
             }
-        }
+        }*/
     }
     // Función para agregar el usuario Admin con la contraseña predeterminada si no existe en el archivo
     private fun addDefaultAdminUser() {
@@ -111,6 +123,15 @@ data class User(
     val age: Int,
     var houseType: String,   // Nuevo campo para el tipo de casa
     var vehicleType: String  // Nuevo campo para el tipo de vehículo
+)
+data class HouseDetails(
+    val capacity: Int,
+    val rooms: Int,
+    val bathrooms: Int,
+    val amenities: String,
+    val generalFeatures: String,
+    val photos: List<Uri>,  // Uri para las imágenes de la casa
+    val paymentPlan: String
 )
 
 var isAppEnabled by mutableStateOf(true) // Variable para habilitar/deshabilitar el aplicativo
@@ -401,6 +422,7 @@ fun PreviewResetPasswordScreen() {
 fun AdminMenuScreen(context: Context) {
     var newPassword by rememberSaveable { mutableStateOf("") }
     val users = remember { mutableStateListOf<User>() }
+    var showAddHouseScreen by remember { mutableStateOf(false) } // Control para navegar a AddHouseScreen
 
     // Leer todos los usuarios al iniciar la pantalla
     LaunchedEffect(Unit) {
@@ -408,96 +430,297 @@ fun AdminMenuScreen(context: Context) {
         users.addAll(readAllUsers(context))
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Bienvenido, Admin")
+    if (showAddHouseScreen) {
+        // Mostrar la pantalla para agregar casa
+        AddHouseScreen(onBack = { showAddHouseScreen = false })
+    } else {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Bienvenido, Admin")
 
-        // Botón para habilitar/deshabilitar el aplicativo
-        Button(onClick = {
-            isAppEnabled = !isAppEnabled
-            Toast.makeText(context, if (isAppEnabled) "Aplicativo habilitado" else "Aplicativo deshabilitado", Toast.LENGTH_SHORT).show()
-        }) {
-            Text(if (isAppEnabled) "Deshabilitar aplicativo" else "Habilitar aplicativo")
-        }
+            // Botón para habilitar/deshabilitar el aplicativo
+            Button(onClick = {
+                isAppEnabled = !isAppEnabled
+                Toast.makeText(
+                    context,
+                    if (isAppEnabled) "Aplicativo habilitado" else "Aplicativo deshabilitado",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }) {
+                Text(if (isAppEnabled) "Deshabilitar aplicativo" else "Habilitar aplicativo")
+            }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Campo para cambiar la contraseña
-        BasicTextField(
-            value = newPassword,
-            onValueChange = { newPassword = it },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
-                    if (newPassword.isEmpty()) Text("Nueva contraseña")
-                    innerTextField()
+            // Campo para cambiar la contraseña
+            BasicTextField(
+                value = newPassword,
+                onValueChange = { newPassword = it },
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                decorationBox = { innerTextField ->
+                    Box(modifier = Modifier.padding(16.dp)) {
+                        if (newPassword.isEmpty()) Text("Nueva contraseña")
+                        innerTextField()
+                    }
                 }
+            )
+
+            // Botón para actualizar la contraseña
+            Button(onClick = {
+                if (newPassword.isNotEmpty()) {
+                    updateAdminPassword(context, newPassword)
+                    Toast.makeText(context, "Contraseña actualizada", Toast.LENGTH_SHORT).show()
+                    newPassword = "" // Limpiar el campo después de actualizar
+                } else {
+                    Toast.makeText(context, "Por favor ingrese una nueva contraseña", Toast.LENGTH_SHORT).show()
+                }
+            }) {
+                Text("Cambiar Contraseña")
             }
-        )
 
-        // Botón para actualizar la contraseña
-        Button(onClick = {
-            if (newPassword.isNotEmpty()) {
-                updateAdminPassword(context, newPassword)
-                Toast.makeText(context, "Contraseña actualizada", Toast.LENGTH_SHORT).show()
-                newPassword = "" // Limpiar el campo después de actualizar
-            } else {
-                Toast.makeText(context, "Por favor ingrese una nueva contraseña", Toast.LENGTH_SHORT).show()
-            }
-        }) {
-            Text("Cambiar Contraseña")
-        }
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Lista de usuarios
-        Text("Lista de usuarios:")
-        LazyColumn(modifier = Modifier.fillMaxWidth()) {
-            items(users) { user ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("${user.alias} - ${user.fullName}", modifier = Modifier.weight(1f))
-                    Button(onClick = {
-                        // Función para actualizar a Admin
-                        if (user.alias != "Admin") {
-                            makeUserAdmin(context, user)
-                            Toast.makeText(context, "${user.alias} ahora es administrador", Toast.LENGTH_SHORT).show()
+            // Lista de usuarios
+            Text("Lista de usuarios:")
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                items(users) { user ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("${user.alias} - ${user.fullName}", modifier = Modifier.weight(1f))
+                        Button(onClick = {
+                            if (user.alias != "Admin") {
+                                makeUserAdmin(context, user)
+                                Toast.makeText(context, "${user.alias} ahora es administrador", Toast.LENGTH_SHORT).show()
+                            }
+                        }) {
+                            Text("Hacer Admin")
                         }
-                    }) {
-                        Text("Hacer Admin")
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Botón para cerrar sesión
-        Button(onClick = {
-            // Cerrar sesión (resetear el estado)
-            isLoggedIn = false
-            isAdmin = false
-        }) {
-            Text("Cerrar sesión")
+            // Botón para cerrar sesión
+            Button(onClick = {
+                isLoggedIn = false
+                isAdmin = false
+            }) {
+                Text("Cerrar sesión")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Nuevo botón para agregar una casa
+            Button(onClick = { showAddHouseScreen = true }) {
+                Text("Agregar Nueva Casa")
+            }
         }
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable
 fun PreviewAdminMenuScreen() {
     val context = LocalContext.current // Necesario para el contexto
     AdminMenuScreen(context = context)
+}
+
+@Composable
+fun AddHouseScreen(
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit, // Callback para volver al menú
+    maxPhotos: Int = 3 // Número máximo de fotos permitido (por defecto: 3)
+) {
+    // Variables para los campos del formulario
+    var capacity by remember { mutableStateOf("") }
+    var rooms by remember { mutableStateOf("") }
+    var bathrooms by remember { mutableStateOf("") }
+    var amenities by remember { mutableStateOf("") }
+    var generalFeatures by remember { mutableStateOf("") }
+    var photos by remember { mutableStateOf(mutableListOf<Uri>()) }
+    val selectedImages = remember { mutableStateListOf<Uri>() }
+    val context = LocalContext.current
+    // Variable para el plan de pago seleccionado
+    var selectedPlan by remember { mutableStateOf("Cuota mensual con servicios básicos") }
+    var expanded by remember { mutableStateOf(false) } // Controla si el menú está abierto
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            if (selectedImages.size < maxPhotos) {
+                selectedImages.add(it) // Agrega la imagen seleccionada
+            }
+        }
+    }
+
+    val paymentPlans = listOf(
+        "Cuota mensual con servicios básicos",
+        "Cuota mensual sin servicios básicos",
+        "Cuota diaria con servicios básicos"
+    )
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Top,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Formulario de detalles importantes
+        Text("Agregar nueva casa")
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        BasicTextField(
+            value = capacity,
+            onValueChange = { capacity = it },
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (capacity.isEmpty()) Text("Capacidad de personas")
+                    innerTextField()
+                }
+            }
+        )
+
+        BasicTextField(
+            value = rooms,
+            onValueChange = { rooms = it },
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (rooms.isEmpty()) Text("Cantidad de habitaciones")
+                    innerTextField()
+                }
+            }
+        )
+
+        BasicTextField(
+            value = bathrooms,
+            onValueChange = { bathrooms = it },
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (bathrooms.isEmpty()) Text("Cantidad de banos")
+                    innerTextField()
+                }
+            }
+        )
+
+        BasicTextField(
+            value = amenities,
+            onValueChange = { amenities = it },
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (amenities.isEmpty()) Text("Amenidades")
+                    innerTextField()
+                }
+            }
+        )
+
+        BasicTextField(
+            value = generalFeatures,
+            onValueChange = { generalFeatures = it },
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (generalFeatures.isEmpty()) Text("Características generales")
+                    innerTextField()
+                }
+            }
+        )
+
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { expanded = true }) {
+                Text(selectedPlan) // Muestra el plan seleccionado
+            }
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false } // Cierra el menú al hacer clic fuera
+            ) {
+                paymentPlans.forEach { plan ->
+                    DropdownMenuItem(
+                        text = { Text(plan) },
+                        onClick = {
+                            selectedPlan = plan // Actualiza el plan seleccionado
+                            expanded = false // Cierra el menú
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Sección para subir imágenes
+        Text("Subir imagenes de la casa (Maximo: $maxPhotos fotos)")
+
+        if (selectedImages.size < maxPhotos) {
+            Button(onClick = {
+                launcher.launch("image/*") // Abre el selector de imágenes
+            }) {
+                Text("Agregar imagen")
+            }
+        }
+
+        LazyColumn {
+            items(selectedImages) { imageUri ->
+                AsyncImage(model = imageUri, contentDescription = null)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Botón para guardar la casa
+        Button(onClick = {
+            if (capacity.isNotEmpty() && rooms.isNotEmpty() && bathrooms.isNotEmpty() &&
+                amenities.isNotEmpty() && photos.size >= maxPhotos
+            ) {
+                // Guardar la casa si todo es válido
+                val newHouse = HouseDetails(
+                    capacity = capacity.toInt(),
+                    rooms = rooms.toInt(),
+                    bathrooms = bathrooms.toInt(),
+                    amenities = amenities,
+                    generalFeatures = generalFeatures,
+                    photos = selectedImages.toList(),
+                    paymentPlan = selectedPlan
+                )
+
+                // Agregar la nueva casa a la lista global
+                MainActivity.globalHouseList.add(newHouse)
+
+                // Mostrar confirmación
+                Toast.makeText(context, "Casa agregada con éxito", Toast.LENGTH_SHORT).show()
+            } else {
+                // Mostrar error si faltan datos
+                Toast.makeText(
+                    context,
+                    "Complete todos los campos y agregue al menos $maxPhotos imágenes",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }) {
+            Text("Guardar casa")
+        }
+
+    }
+
 }
 
 

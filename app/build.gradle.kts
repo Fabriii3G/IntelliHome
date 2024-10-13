@@ -66,6 +66,12 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    implementation ("androidx.compose.ui:ui:1.5.1")
+    implementation ("androidx.compose.material:material:1.5.1")
+    implementation ("androidx.compose.ui:ui-tooling-preview:1.5.1")
+    implementation ("androidx.lifecycle:lifecycle-runtime-ktx:2.6.1")
+    implementation ("androidx.activity:activity-compose:1.8.0")
+    implementation("io.coil-kt:coil-compose:2.1.0")
     //implementation 'com.sun.mail:android-mail:1.6.6'
     //implementation 'com.sun.mail:android-activation:1.6.6'
 
