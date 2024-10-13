@@ -971,7 +971,7 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(8.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -984,9 +984,9 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
             onValueChange = { alias = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(8.dp),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
+                Box(modifier = Modifier.padding(8.dp)) {
                     if (alias.isEmpty()) Text("Usuario (alias)")
                     innerTextField()
                 }
@@ -998,9 +998,9 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
             onValueChange = { fullName = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(8.dp),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
+                Box(modifier = Modifier.padding(8.dp)) {
                     if (fullName.isEmpty()) Text("Nombre completo")
                     innerTextField()
                 }
@@ -1012,9 +1012,9 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
             onValueChange = { email = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(8.dp),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
+                Box(modifier = Modifier.padding(8.dp)) {
                     if (email.isEmpty()) Text("Correo electrónico")
                     innerTextField()
                 }
@@ -1027,9 +1027,9 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(8.dp),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
+                Box(modifier = Modifier.padding(8.dp)) {
                     if (password.isEmpty()) Text("Contraseña")
                     innerTextField()
                 }
@@ -1041,7 +1041,7 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
         // Mostrar requisitos de contraseña
         Text(
             text = "8 caracteres, una letra mayúscula, una letra minúscula, un número y un carácter especial.",
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(5.dp)
         )
 
         Spacer(modifier = Modifier.height(2.dp))
