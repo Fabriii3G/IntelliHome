@@ -969,7 +969,7 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
     ) {
         Text("Registrar nuevo usuario", style = MaterialTheme.typography.headlineSmall)
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         BasicTextField(
             value = alias,
@@ -1028,7 +1028,7 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
             }
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         // Mostrar requisitos de contraseña
         Text(
@@ -1036,7 +1036,7 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
             modifier = Modifier.padding(16.dp)
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         // Selector de tipo de casa
         Text("Seleccione el tipo de casa:")
@@ -1060,7 +1060,7 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         // Selector de tipo de vehículo
         Text("Seleccione el tipo de vehículo:")
@@ -1084,7 +1084,7 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         // Selector de edad
         Row(
@@ -1104,7 +1104,7 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         // Botón para registrar
         Button(onClick = {
@@ -1119,14 +1119,14 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
             Text("Registrar")
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         // Botón para acceder a la ventana de pago
         Button(onClick = onPaymentClick) {
             Text("Ir a la ventana de pago")
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         Button(onClick = onBack) {
             Text("Volver")
