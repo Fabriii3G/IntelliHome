@@ -60,6 +60,16 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import java.io.File
+import androidx.compose.runtime.*
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.*
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.CameraPositionState
+import com.google.maps.android.compose.rememberCameraPositionState
+
+
 
 
 class MainActivity : ComponentActivity() {
@@ -143,7 +153,9 @@ data class HouseDetails(
     val amenities: String,
     val generalFeatures: String,
     val photos: List<Uri>,  // Uri para las imágenes de la casa
-    val paymentPlan: String
+    val paymentPlan: String,
+    val latitude: Double,
+    val longitude: Double
 )
 
 var isAppEnabled by mutableStateOf(true) // Variable para habilitar/deshabilitar el aplicativo
@@ -575,6 +587,9 @@ fun AddHouseScreen(
     // Variable para el plan de pago seleccionado
     var selectedPlan by remember { mutableStateOf("Cuota mensual con servicios básicos") }
     var expanded by remember { mutableStateOf(false) } // Controla si el menú está abierto
+    var selectedLocation by remember { mutableStateOf<LatLng?>(null) }
+    var showSelectLocation by remember { mutableStateOf(false) }
+
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -592,157 +607,224 @@ fun AddHouseScreen(
         "Cuota diaria con servicios básicos"
     )
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Formulario de detalles importantes
-        Text("Agregar nueva casa")
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        BasicTextField(
-            value = capacity,
-            onValueChange = { capacity = it },
-            modifier = Modifier.fillMaxWidth(),
-            decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
-                    if (capacity.isEmpty()) Text("Capacidad de personas")
-                    innerTextField()
-                }
+    if (showSelectLocation) {
+        SelectLocationScreen(
+            onLocationSelected = { location ->
+                selectedLocation = location
+                showSelectLocation = false // Volver a la pantalla de agregar casa
             }
         )
+    } else {
 
-        BasicTextField(
-            value = rooms,
-            onValueChange = { rooms = it },
-            modifier = Modifier.fillMaxWidth(),
-            decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
-                    if (rooms.isEmpty()) Text("Cantidad de habitaciones")
-                    innerTextField()
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Formulario de detalles importantes
+            Text("Agregar nueva casa")
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            BasicTextField(
+                value = capacity,
+                onValueChange = { capacity = it },
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { innerTextField ->
+                    Box(modifier = Modifier.padding(16.dp)) {
+                        if (capacity.isEmpty()) Text("Capacidad de personas")
+                        innerTextField()
+                    }
+                }
+            )
+
+            BasicTextField(
+                value = rooms,
+                onValueChange = { rooms = it },
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { innerTextField ->
+                    Box(modifier = Modifier.padding(16.dp)) {
+                        if (rooms.isEmpty()) Text("Cantidad de habitaciones")
+                        innerTextField()
+                    }
+                }
+            )
+
+            BasicTextField(
+                value = bathrooms,
+                onValueChange = { bathrooms = it },
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { innerTextField ->
+                    Box(modifier = Modifier.padding(16.dp)) {
+                        if (bathrooms.isEmpty()) Text("Cantidad de banos")
+                        innerTextField()
+                    }
+                }
+            )
+
+            BasicTextField(
+                value = amenities,
+                onValueChange = { amenities = it },
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { innerTextField ->
+                    Box(modifier = Modifier.padding(16.dp)) {
+                        if (amenities.isEmpty()) Text("Amenidades")
+                        innerTextField()
+                    }
+                }
+            )
+
+            BasicTextField(
+                value = generalFeatures,
+                onValueChange = { generalFeatures = it },
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { innerTextField ->
+                    Box(modifier = Modifier.padding(16.dp)) {
+                        if (generalFeatures.isEmpty()) Text("Características generales")
+                        innerTextField()
+                    }
+                }
+            )
+
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = { expanded = true }) {
+                    Text(selectedPlan) // Muestra el plan seleccionado
+                }
+
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false } // Cierra el menú al hacer clic fuera
+                ) {
+                    paymentPlans.forEach { plan ->
+                        DropdownMenuItem(
+                            text = { Text(plan) },
+                            onClick = {
+                                selectedPlan = plan // Actualiza el plan seleccionado
+                                expanded = false // Cierra el menú
+                            }
+                        )
+                    }
                 }
             }
-        )
 
-        BasicTextField(
-            value = bathrooms,
-            onValueChange = { bathrooms = it },
-            modifier = Modifier.fillMaxWidth(),
-            decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
-                    if (bathrooms.isEmpty()) Text("Cantidad de banos")
-                    innerTextField()
-                }
-            }
-        )
+            Spacer(modifier = Modifier.height(16.dp))
 
-        BasicTextField(
-            value = amenities,
-            onValueChange = { amenities = it },
-            modifier = Modifier.fillMaxWidth(),
-            decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
-                    if (amenities.isEmpty()) Text("Amenidades")
-                    innerTextField()
-                }
-            }
-        )
-
-        BasicTextField(
-            value = generalFeatures,
-            onValueChange = { generalFeatures = it },
-            modifier = Modifier.fillMaxWidth(),
-            decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
-                    if (generalFeatures.isEmpty()) Text("Características generales")
-                    innerTextField()
-                }
-            }
-        )
-
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Button(onClick = { expanded = true }) {
-                Text(selectedPlan) // Muestra el plan seleccionado
-            }
-
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false } // Cierra el menú al hacer clic fuera
-            ) {
-                paymentPlans.forEach { plan ->
-                    DropdownMenuItem(
-                        text = { Text(plan) },
-                        onClick = {
-                            selectedPlan = plan // Actualiza el plan seleccionado
-                            expanded = false // Cierra el menú
-                        }
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Sección para subir imágenes
-        Text("Subir imagenes de la casa (Maximo: $maxPhotos fotos)")
-
-        if (selectedImages.size < maxPhotos) {
             Button(onClick = {
-                launcher.launch("image/*") // Abre el selector de imágenes
+                showSelectLocation = true // Cambiar a la pantalla de selección de ubicación
             }) {
-                Text("Agregar imagen")
+                Text("Seleccionar ubicación")
             }
-        }
 
-        LazyColumn {
-            items(selectedImages) { imageUri ->
-                AsyncImage(model = imageUri, contentDescription = null)
+            selectedLocation?.let {
+                Text("Ubicación seleccionada: ${it.latitude}, ${it.longitude}")
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Botón para guardar la casa
-        Button(onClick = {
-            if (capacity.isNotEmpty() && rooms.isNotEmpty() && bathrooms.isNotEmpty() &&
-                amenities.isNotEmpty() && photos.size >= maxPhotos
-            ) {
-                // Guardar la casa si todo es válido
-                val newHouse = HouseDetails(
-                    capacity = capacity.toInt(),
-                    rooms = rooms.toInt(),
-                    bathrooms = bathrooms.toInt(),
-                    amenities = amenities,
-                    generalFeatures = generalFeatures,
-                    photos = selectedImages.toList(),
-                    paymentPlan = selectedPlan
-                )
+            // Sección para subir imágenes
+            Text("Subir imagenes de la casa (Maximo: $maxPhotos fotos)")
 
-                // Agregar la nueva casa a la lista global
-                MainActivity.globalHouseList.add(newHouse)
-
-                // Mostrar confirmación
-                Toast.makeText(context, "Casa agregada con éxito", Toast.LENGTH_SHORT).show()
-            } else {
-                // Mostrar error si faltan datos
-                Toast.makeText(
-                    context,
-                    "Complete todos los campos y agregue al menos $maxPhotos imágenes",
-                    Toast.LENGTH_SHORT
-                ).show()
+            if (selectedImages.size < maxPhotos) {
+                Button(onClick = {
+                    launcher.launch("image/*") // Abre el selector de imágenes
+                }) {
+                    Text("Agregar imagen")
+                }
             }
-        }) {
-            Text("Guardar casa")
-        }
 
+            LazyColumn {
+                items(selectedImages) { imageUri ->
+                    AsyncImage(model = imageUri, contentDescription = null)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Botón para guardar la casa
+            Button(onClick = {
+                if (capacity.isNotEmpty() && rooms.isNotEmpty() && bathrooms.isNotEmpty() &&
+                    amenities.isNotEmpty() && photos.size >= maxPhotos
+                ) {
+                    // Guardar la casa si todo es válido
+                    val newHouse = HouseDetails(
+                        capacity = capacity.toInt(),
+                        rooms = rooms.toInt(),
+                        bathrooms = bathrooms.toInt(),
+                        amenities = amenities,
+                        generalFeatures = generalFeatures,
+                        photos = selectedImages.toList(),
+                        paymentPlan = selectedPlan,
+                        latitude = selectedLocation!!.latitude,
+                        longitude = selectedLocation!!.longitude
+                    )
+
+                    // Agregar la nueva casa a la lista global
+                    MainActivity.globalHouseList.add(newHouse)
+
+                    // Mostrar confirmación
+                    Toast.makeText(context, "Casa agregada con éxito", Toast.LENGTH_SHORT).show()
+                } else {
+                    // Mostrar error si faltan datos
+                    Toast.makeText(
+                        context,
+                        "Complete todos los campos y agregue al menos $maxPhotos imágenes",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }) {
+                Text("Guardar casa")
+            }
+
+        }
     }
 
 }
 
+@SuppressLint("MissingPermission")
+@Composable
+fun SelectLocationScreen(onLocationSelected: (LatLng) -> Unit) {
+    val context = LocalContext.current
+    var selectedLocation by remember { mutableStateOf<LatLng?>(null) }
+
+    // Ubicación inicial (podría ser la ubicación actual del usuario o un punto por defecto)
+    val initialLocation = LatLng(-34.0, 151.0) // Ejemplo, se puede cambiar
+  /*
+    val cameraPositionState = rememberCameraPositionState {
+        position = com.google.maps.android.compose.CameraPositionState.fromLatLngZoom(initialLocation, 10f)
+    }
+*/
+    Box(Modifier.fillMaxSize()) {
+        GoogleMap(
+            modifier = Modifier.fillMaxSize(),
+            //cameraPositionState = cameraPositionState,
+            onMapClick = { latLng ->
+                selectedLocation = latLng
+            }
+        )
+
+        // Muestra un marcador donde el usuario hace clic
+        selectedLocation?.let { location ->
+            Marker(
+                state = MarkerState(position = location),
+                title = "Ubicación seleccionada"
+            )
+        }
+
+        // Botón para confirmar la ubicación seleccionada
+        Button(
+            onClick = {
+                selectedLocation?.let { onLocationSelected(it) }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp)
+        ) {
+            Text("Confirmar ubicación")
+        }
+    }
+}
 
 // Pantalla del menú de usuario común
 @Composable
