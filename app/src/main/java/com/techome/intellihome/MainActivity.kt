@@ -1,5 +1,6 @@
 package com.techome.intellihome
 
+import android.util.Log
 import android.Manifest
 import android.R
 import android.annotation.SuppressLint
@@ -60,15 +61,11 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import java.io.File
-import androidx.compose.runtime.*
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.*
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.CameraPositionState
-import com.google.maps.android.compose.rememberCameraPositionState
-
+import android.os.Environment
 
 
 
@@ -130,21 +127,21 @@ class MainActivity : ComponentActivity() {
     private fun addDefaultAdminUser() {
         val file = File(filesDir, "users.txt")
         if (!file.exists() || !file.readText().contains("Admin")) {
-            // Si no existe el usuario Admin, lo agregamos
+
             file.appendText("Admin,Administrador,admin@tec.com,TEC2024,30,Apartamento Inteligente,Carro\n")
         }
     }
 }
 
-// Clase usuario actualizada para incluir tipo de casa y tipo de vehículo
+
 data class User(
     var alias: String,
     var fullName: String,
     var email: String,
     var password: String,
     val age: Int,
-    var houseType: String,   // Nuevo campo para el tipo de casa
-    var vehicleType: String  // Nuevo campo para el tipo de vehículo
+    var houseType: String,
+    var vehicleType: String
 )
 data class HouseDetails(
     val capacity: Int,
@@ -168,6 +165,95 @@ fun isPasswordValid(password: String): Boolean {
     val passwordPattern = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#\$%^&+=!])(?=\\S+\$).{8,}\$"
     val passwordMatcher = Regex(passwordPattern)
     return passwordMatcher.matches(password)
+}
+
+
+
+
+// Función para guardar los datos de usuario en un archivo
+fun saveUserToFile(context: android.content.Context, user: User) {
+    val file = File(context.filesDir, "users.txt")
+    Log.d("UserFilePath", "Ruta del archivo: ${file.absolutePath}")
+
+
+    try {
+        // Verifica si el archivo existe, si no, lo crea
+        if (!file.exists()) {
+            val isFileCreated = file.createNewFile()
+            println("Archivo creado: $isFileCreated en ${file.absolutePath}")
+        }
+
+        // Comprobación de contenido duplicado
+        val lines = file.readLines()
+        val userExists = lines.any { it.startsWith(user.alias) }
+
+        if (!userExists) {
+            file.appendText("${user.alias},${user.fullName},${user.email},${user.password},${user.age},${user.houseType},${user.vehicleType}\n")
+            println("Usuario '${user.alias}' guardado correctamente.")
+        } else {
+            println("El usuario '${user.alias}' ya existe.")
+        }
+
+    } catch (e: Exception) {
+        e.printStackTrace()
+        println("Error al guardar el usuario: ${e.message}")
+    }
+}
+
+fun deleteUserFromFile(context: android.content.Context, userAlias: String) {
+    val file = File(context.filesDir, "users.txt")
+    Log.d("UserFilePath", "Ruta del archivo: ${file.absolutePath}")
+
+
+    if (file.exists()) {
+        // Leer todas las líneas del archivo
+        val lines = file.readLines().toMutableList()
+
+        // Filtrar las líneas que no corresponden al usuario que deseas eliminar
+        val updatedLines = lines.filter { !it.startsWith("$userAlias,") }
+
+        // Sobrescribir el archivo con las líneas actualizadas
+        file.writeText(updatedLines.joinToString("\n"))
+    }
+}
+
+
+// Función para actualizar la contraseña del Admin en el archivo
+fun updateAdminPassword(context: android.content.Context, newPassword: String) {
+    val file = File(context.filesDir, "users.txt")
+    Log.d("UserFilePath", "Ruta del archivo: ${file.absolutePath}")
+
+    if (file.exists()) {
+        val lines = file.readLines()
+        val newLines = lines.map { line ->
+            if (line.startsWith("Admin")) {
+                val parts = line.split(",")
+                "Admin,${parts[1]},${parts[2]},$newPassword,${parts[4]},${parts[5]},${parts[6]}"
+            } else {
+                line
+            }
+        }
+        file.writeText(newLines.joinToString("\n"))
+    }
+}
+
+// Función para hacer a un usuario administrador
+fun makeUserAdmin(context: android.content.Context, user: User) {
+    val file = File(context.filesDir, "users.txt")
+    Log.d("UserFilePath", "Ruta del archivo: ${file.absolutePath}")
+
+    if (file.exists()) {
+        val lines = file.readLines()
+        val newLines = lines.map { line ->
+            val parts = line.split(",")
+            if (parts[0] == user.alias) {
+                "${user.alias},Administrador,${user.email},${user.password},${user.age},${user.houseType},${user.vehicleType}"
+            } else {
+                line
+            }
+        }
+        file.writeText(newLines.joinToString("\n"))
+    }
 }
 
 @Composable
@@ -1021,7 +1107,8 @@ fun EditUserScreen(onSave: () -> Unit) {
             currentUser.vehicleType = selectedVehicleType
 
             onSave()  // Llamar al callback de guardado
-            saveUserToFile(context, currentUser) //Guarda informacion nueva
+            saveUserToFile(context, currentUser) // Pasa el contexto y el usuario
+
             deleteUserFromFile(context, oldUser) //Elimina informacion anterior
         }) {
             Text("Guardar cambios")
@@ -1044,44 +1131,35 @@ fun PreviewEditUserScreen() {
 
 // Pantalla de registro de usuario actualizada con validación de contraseña
 @Composable
-fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
+fun RegisterUserScreen(
+    onBack: () -> Unit,
+    onPaymentClick: () -> Unit
+) {
     var alias by rememberSaveable { mutableStateOf("") }
     var fullName by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    var age by rememberSaveable { mutableStateOf(18) }
+    var age by rememberSaveable { mutableStateOf("") }
+    var houseType by rememberSaveable { mutableStateOf("") }
+    var vehicleType by rememberSaveable { mutableStateOf("") }
+
     val context = LocalContext.current
 
-    // Nueva variable para el tipo de casa
-    val houseTypes = listOf("Apartamento Inteligente", "Apartamento Normal", "Casa Normal", "Casa con Apartamento")
-    var selectedHouseType by rememberSaveable { mutableStateOf(houseTypes[0]) }
-    var expandedHouseType by rememberSaveable { mutableStateOf(false) }
-
-    // Nueva variable para el tipo de vehículo
-    val vehicleTypes = listOf("Bicicleta", "Carro", "Moto", "Otro")
-    var selectedVehicleType by rememberSaveable { mutableStateOf(vehicleTypes[0]) }
-    var expandedVehicleType by rememberSaveable { mutableStateOf(false) }
-
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(8.dp),
+        modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Registrar nuevo usuario", style = MaterialTheme.typography.headlineSmall)
-
-        Spacer(modifier = Modifier.height(2.dp))
-
+        // Campos de texto para el registro de usuario
         BasicTextField(
             value = alias,
             onValueChange = { alias = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(16.dp),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(8.dp)) {
-                    if (alias.isEmpty()) Text("Usuario (alias)")
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (alias.isEmpty()) Text("Alias")
                     innerTextField()
                 }
             }
@@ -1092,10 +1170,10 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
             onValueChange = { fullName = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(16.dp),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(8.dp)) {
-                    if (fullName.isEmpty()) Text("Nombre completo")
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (fullName.isEmpty()) Text("Nombre Completo")
                     innerTextField()
                 }
             }
@@ -1106,10 +1184,10 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
             onValueChange = { email = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(16.dp),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(8.dp)) {
-                    if (email.isEmpty()) Text("Correo electrónico")
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (email.isEmpty()) Text("Email")
                     innerTextField()
                 }
             }
@@ -1118,123 +1196,90 @@ fun RegisterUserScreen(onBack: () -> Unit, onPaymentClick: () -> Unit) {
         BasicTextField(
             value = password,
             onValueChange = { password = it },
-            visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(16.dp),
+            visualTransformation = PasswordVisualTransformation(),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(8.dp)) {
+                Box(modifier = Modifier.padding(16.dp)) {
                     if (password.isEmpty()) Text("Contraseña")
                     innerTextField()
                 }
             }
         )
 
-        Spacer(modifier = Modifier.height(2.dp))
-
-        // Mostrar requisitos de contraseña
-        Text(
-            text = "8 caracteres, una letra mayúscula, una letra minúscula, un número y un carácter especial.",
-            modifier = Modifier.padding(5.dp)
+        BasicTextField(
+            value = age,
+            onValueChange = { age = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (age.isEmpty()) Text("Edad")
+                    innerTextField()
+                }
+            }
         )
 
-        Spacer(modifier = Modifier.height(2.dp))
-
-        // Selector de tipo de casa
-        Text("Seleccione el tipo de casa:")
-        Box {
-            Button(onClick = { expandedHouseType = !expandedHouseType }) {
-                Text(selectedHouseType)
-            }
-            DropdownMenu(
-                expanded = expandedHouseType,
-                onDismissRequest = { expandedHouseType = false }
-            ) {
-                houseTypes.forEach { houseType ->
-                    DropdownMenuItem(
-                        text = { Text(houseType) },
-                        onClick = {
-                            selectedHouseType = houseType
-                            expandedHouseType = false
-                        }
-                    )
+        BasicTextField(
+            value = houseType,
+            onValueChange = { houseType = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (houseType.isEmpty()) Text("Tipo de Casa")
+                    innerTextField()
                 }
             }
-        }
+        )
 
-        Spacer(modifier = Modifier.height(2.dp))
-
-        // Selector de tipo de vehículo
-        Text("Seleccione el tipo de vehículo:")
-        Box {
-            Button(onClick = { expandedVehicleType = !expandedVehicleType }) {
-                Text(selectedVehicleType)
-            }
-            DropdownMenu(
-                expanded = expandedVehicleType,
-                onDismissRequest = { expandedVehicleType = false }
-            ) {
-                vehicleTypes.forEach { vehicleType ->
-                    DropdownMenuItem(
-                        text = { Text(vehicleType) },
-                        onClick = {
-                            selectedVehicleType = vehicleType
-                            expandedVehicleType = false
-                        }
-                    )
+        BasicTextField(
+            value = vehicleType,
+            onValueChange = { vehicleType = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (vehicleType.isEmpty()) Text("Tipo de Vehículo")
+                    innerTextField()
                 }
             }
-        }
+        )
 
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Selector de edad
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text("Edad:")
-            BasicTextField(
-                value = age.toString(),
-                onValueChange = { newValue ->
-                    val parsedValue = newValue.toIntOrNull() ?: 18
-                    age = parsedValue.coerceIn(1, 120)
-                },
-                modifier = Modifier
-                    .padding(start = 8.dp)
-                    .width(50.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        // Botón para registrar
+        // Botón para registrar el usuario
         Button(onClick = {
-            if (alias.isNotEmpty() && fullName.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty()) {
-                // Lógica de registro de usuario
-                Toast.makeText(context, "Usuario registrado con éxito", Toast.LENGTH_SHORT).show()
-                onBack()
+            val user = User(alias, fullName, email, password, age.toInt(), houseType, vehicleType)
+            if (isPasswordValid(password)) {
+                saveUserToFile(context, user)
+                Toast.makeText(context, "Usuario registrado exitosamente", Toast.LENGTH_LONG).show()
+                onBack()  // Regresar al login después del registro
             } else {
-                Toast.makeText(context, "Por favor complete todos los campos", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Contraseña inválida. Debe contener al menos 8 caracteres, incluyendo mayúsculas, minúsculas, números y símbolos", Toast.LENGTH_LONG).show()
             }
         }) {
-            Text("Registrar")
+            Text("Registrar Usuario")
         }
 
-        Spacer(modifier = Modifier.height(2.dp))
-
-        // Botón para acceder a la ventana de pago
-        Button(onClick = onPaymentClick) {
-            Text("Ir a la ventana de pago")
-        }
-
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = onBack) {
             Text("Volver")
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = onPaymentClick) {
+            Text("Continuar a Pago")
+        }
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable
@@ -1509,60 +1554,7 @@ fun isUserAlreadyRegistered(context: Context, alias: String, email: String): Boo
     return false
 }
 
-// Función para guardar los datos de usuario en un archivo
-fun saveUserToFile(context: Context, user: User) {
-    val file = File(context.filesDir, "users.txt")
-    file.appendText("${user.alias},${user.fullName},${user.email},${user.password},${user.age},${user.houseType},${user.vehicleType}\n")
-}
 
-fun deleteUserFromFile(context: Context, userAlias: String) {
-    val file = File(context.filesDir, "users.txt")
-
-    if (file.exists()) {
-        // Leer todas las líneas del archivo
-        val lines = file.readLines().toMutableList()
-
-        // Filtrar las líneas que no corresponden al usuario que deseas eliminar
-        val updatedLines = lines.filter { !it.startsWith("$userAlias,") }
-
-        // Sobrescribir el archivo con las líneas actualizadas
-        file.writeText(updatedLines.joinToString("\n"))
-    }
-}
-
-// Función para actualizar la contraseña del Admin en el archivo
-fun updateAdminPassword(context: Context, newPassword: String) {
-    val file = File(context.filesDir, "users.txt")
-    if (file.exists()) {
-        val lines = file.readLines()
-        val newLines = lines.map { line ->
-            if (line.startsWith("Admin")) {
-                val parts = line.split(",")
-                "Admin,${parts[1]},${parts[2]},$newPassword,${parts[4]},${parts[5]},${parts[6]}"
-            } else {
-                line
-            }
-        }
-        file.writeText(newLines.joinToString("\n"))
-    }
-}
-
-// Función para hacer a un usuario administrador
-fun makeUserAdmin(context: Context, user: User) {
-    val file = File(context.filesDir, "users.txt")
-    if (file.exists()) {
-        val lines = file.readLines()
-        val newLines = lines.map { line ->
-            val parts = line.split(",")
-            if (parts[0] == user.alias) {
-                "${user.alias},Administrador,${user.email},${user.password},${user.age},${user.houseType},${user.vehicleType}"
-            } else {
-                line
-            }
-        }
-        file.writeText(newLines.joinToString("\n"))
-    }
-}
 
 // Función para recordar al admin que cambie la contraseña cada 2 minutos usando notificaciones
 fun startPasswordReminder(context: Context) {

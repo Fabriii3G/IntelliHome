@@ -74,6 +74,11 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.1.0")
     implementation ("com.google.android.gms:play-services-maps:18.0.2")
     implementation ("com.google.maps.android:maps-compose:2.1.0")
+    implementation ("com.google.android.gms:play-services-maps:18.0.2")
+    implementation ("com.google.maps.android:maps-compose:2.7.0")
+    implementation ("io.coil-kt:coil-compose:2.2.2")
+
+
     //implementation 'com.sun.mail:android-mail:1.6.6'
     //implementation 'com.sun.mail:android-activation:1.6.6'
 
