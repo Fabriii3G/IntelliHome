@@ -66,7 +66,7 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import android.os.Environment
-
+import androidx.compose.material3.OutlinedTextField
 
 
 class MainActivity : ComponentActivity() {
@@ -127,7 +127,6 @@ class MainActivity : ComponentActivity() {
     private fun addDefaultAdminUser() {
         val file = File(filesDir, "users.txt")
         if (!file.exists() || !file.readText().contains("Admin")) {
-
             file.appendText("Admin,Administrador,admin@tec.com,TEC2024,30,Apartamento Inteligente,Carro\n")
         }
     }
@@ -149,10 +148,22 @@ data class HouseDetails(
     val bathrooms: Int,
     val amenities: String,
     val generalFeatures: String,
-    val photos: List<Uri>,  // Uri para las imágenes de la casa
+    //val photos: List<Uri>,  // Uri para las imágenes de la casa
     val paymentPlan: String,
-    val latitude: Double,
-    val longitude: Double
+    //val latitude: Double,
+    //val longitude: Double
+    val Devices: MutableList<IOT> = mutableListOf<IOT>(),
+    var Iot: IOT,
+    //var IOTDevice: String = "",
+    //var TypeOfDevice: String = "",
+    //var LocationAtHouse: String = "",
+)
+
+data class IOT(
+    var Device: String = "",
+    var Type: String = "",
+    var Location: String = "",
+    var Activated: Boolean
 )
 
 var isAppEnabled by mutableStateOf(true) // Variable para habilitar/deshabilitar el aplicativo
@@ -541,6 +552,7 @@ fun AdminMenuScreen(context: Context) {
     var newPassword by rememberSaveable { mutableStateOf("") }
     val users = remember { mutableStateListOf<User>() }
     var showAddHouseScreen by remember { mutableStateOf(false) } // Control para navegar a AddHouseScreen
+    var showEditHousesScreen by remember { mutableStateOf(false) }
 
     // Leer todos los usuarios al iniciar la pantalla
     LaunchedEffect(Unit) {
@@ -551,6 +563,8 @@ fun AdminMenuScreen(context: Context) {
     if (showAddHouseScreen) {
         // Mostrar la pantalla para agregar casa
         AddHouseScreen(onBack = { showAddHouseScreen = false })
+    } else if (showEditHousesScreen){
+            EditHousesScreen(onBack = {showEditHousesScreen = false})
     } else {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -643,10 +657,284 @@ fun AdminMenuScreen(context: Context) {
             Button(onClick = { showAddHouseScreen = true }) {
                 Text("Agregar Nueva Casa")
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Botón para editar casas
+            Button(onClick = { showEditHousesScreen = true }) {
+                Text("Editar Casas")
+            }
         }
     }
 }
 
+@Composable
+fun EditHousesScreen(onBack: () -> Unit) {
+    var selectedHouse by remember { mutableStateOf<HouseDetails?>(null) } // Casa seleccionada para edición
+    var showIOTDevicesScreen by remember { mutableStateOf(false) }
+    var showEditHouseDetailsScreen by remember { mutableStateOf(false) }  // Control para mostrar EditHouseDetailsScreen
+
+    if (showEditHouseDetailsScreen && selectedHouse != null) {
+        EditHouseDetailsScreen(
+            house = selectedHouse!!,
+            onSave = { updatedHouse ->
+                val index = MainActivity.globalHouseList.indexOf(selectedHouse)
+                if (index >= 0) {
+                    MainActivity.globalHouseList[index] = updatedHouse // Actualizar la casa en la lista
+                }
+                selectedHouse = null
+                showEditHouseDetailsScreen = false
+            },
+            onCancel = {
+                selectedHouse = null
+                showEditHouseDetailsScreen = false
+            }
+        )
+    }else if (showIOTDevicesScreen && selectedHouse != null){
+        showIOTDevicesScreen(
+            house = selectedHouse!!,
+            onSave = { updatedHouse ->
+                val index = MainActivity.globalHouseList.indexOf(selectedHouse)
+                if (index >= 0) {
+                    MainActivity.globalHouseList[index] = updatedHouse // Actualizar la casa en la lista
+                }
+                selectedHouse = null
+                showEditHouseDetailsScreen = false
+            },
+            onCancel = {
+                selectedHouse = null
+                showEditHouseDetailsScreen = false
+            }
+        )
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            Text("Editar Casas")
+
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                items(MainActivity.globalHouseList) { house ->
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Text("Capacidad: ${house.capacity}")
+                        Text("Habitaciones: ${house.rooms}")
+                        Text("Baños: ${house.bathrooms}")
+                        Text("Amenities: ${house.amenities}")
+                        Text("Características Generales: ${house.generalFeatures}")
+                        Text("Plan de Pago: ${house.paymentPlan}")
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = {
+                            selectedHouse = house // Seleccionar la casa actual
+                            showEditHouseDetailsScreen = true // Mostrar pantalla de edición
+                        }) {
+                            Text("Agregar dispositivos")
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = {
+                            selectedHouse = house // Seleccionar la casa actual
+                            showIOTDevicesScreen = true
+                        }) {
+                            Text("Ver dispositivos")
+                        }
+
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(onClick = onBack) {
+                Text("Volver")
+            }
+        }
+    }
+}
+
+@Composable
+fun showIOTDevicesScreen(house: HouseDetails, onSave: (HouseDetails) -> Unit, onCancel: () -> Unit){
+    val index = MainActivity.globalHouseList.indexOf(house)
+    var selectedDevice by remember { mutableStateOf<IOT?>(null) } // Casa seleccionada para edición
+    var showEditIotsScreen by remember { mutableStateOf(false) }  // Control para mostrar EditHouseDetailsScreen
+
+    if (showEditIotsScreen && selectedDevice != null) {
+        EditIotsScreen(
+            device = selectedDevice!!,
+            onSave = { updated ->
+                val index1 = MainActivity.globalHouseList[index].Devices.indexOf(selectedDevice)
+                if (index1 >= 0) {
+                    MainActivity.globalHouseList[index].Devices[index1] = updated // Actualizar la casa en la lista
+                }
+                selectedDevice = null
+                showEditIotsScreen = false
+            },
+            onCancel = {
+                selectedDevice = null
+                showEditIotsScreen = false
+            }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text("Editar Casas")
+
+        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+            items(MainActivity.globalHouseList[index].Devices) { device ->
+                Column(modifier = Modifier.padding(8.dp)) {
+                    Text("Dispositivo IOT: ${device.Device}")
+                    Text("Tipo de dispositivo: ${device.Type}")
+                    Text("Ubicacion: ${device.Location}")
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = {
+                        selectedDevice = device // Seleccionar la casa actual
+                        showEditIotsScreen = true // Mostrar pantalla de edición
+                    }) {
+                        Text("Editar")
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(onClick = onCancel) {
+            Text("Volver")
+        }
+    }
+}
+
+@Composable
+    fun EditIotsScreen(device: IOT, onSave: (IOT) -> Unit, onCancel: () -> Unit){
+    var deviceName by rememberSaveable { mutableStateOf(device.Device) }
+    var deviceType by rememberSaveable { mutableStateOf(device.Type) }
+    var location by rememberSaveable { mutableStateOf(device.Location) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Editar Detalles de la Casa")
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Campos de texto para los detalles adicionales
+        OutlinedTextField(
+            value = deviceName,
+            onValueChange = { deviceName = it },
+            label = { Text("Nombre del dispositivo") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = deviceType,
+            onValueChange = { deviceType = it },
+            label = { Text("Tipo de dispositivo") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = location,
+            onValueChange = { location = it },
+            label = { Text("Ubicación en la casa") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Botón para guardar cambios
+        Button(onClick = {
+            device.Device = deviceName
+            device.Type = deviceType
+            device.Location = location
+        }) {
+            Text("Guardar Cambios")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(onClick = onCancel) {
+            Text("Volver")
+        }
+    }
+}
+
+@Composable
+fun EditHouseDetailsScreen(house: HouseDetails, onSave: (HouseDetails) -> Unit, onCancel: () -> Unit) {
+    var deviceName by rememberSaveable { mutableStateOf("") }
+    var deviceType by rememberSaveable { mutableStateOf("") }
+    var location by rememberSaveable { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Editar Detalles de la Casa")
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Campos de texto para los detalles adicionales
+        OutlinedTextField(
+            value = deviceName,
+            onValueChange = { deviceName = it },
+            label = { Text("Nombre del dispositivo") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = deviceType,
+            onValueChange = { deviceType = it },
+            label = { Text("Tipo de dispositivo") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = location,
+            onValueChange = { location = it },
+            label = { Text("Ubicación en la casa") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Botón para guardar cambios
+        Button(onClick = {
+            val index = MainActivity.globalHouseList.indexOf(house)
+            var IotDevice = IOT(deviceName, deviceType, location, true)
+            MainActivity.globalHouseList[index].Devices.add(IotDevice)
+
+            MainActivity.globalHouseList[index].Iot.Device = deviceName
+            MainActivity.globalHouseList[index].Iot.Type = deviceType
+            MainActivity.globalHouseList[index].Iot.Location = location
+        }) {
+            Text("Guardar Cambios")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(onClick = onCancel) {
+            Text("Volver")
+        }
+    }
+}
 
 @Preview(showBackground = true)
 @Composable
@@ -659,7 +947,7 @@ fun PreviewAdminMenuScreen() {
 fun AddHouseScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit, // Callback para volver al menú
-    maxPhotos: Int = 3 // Número máximo de fotos permitido (por defecto: 3)
+    maxPhotos: Int = 0 // Número máximo de fotos permitido (por defecto: 3)
 ) {
     // Variables para los campos del formulario
     var capacity by remember { mutableStateOf("") }
@@ -831,7 +1119,7 @@ fun AddHouseScreen(
             // Botón para guardar la casa
             Button(onClick = {
                 if (capacity.isNotEmpty() && rooms.isNotEmpty() && bathrooms.isNotEmpty() &&
-                    amenities.isNotEmpty() && photos.size >= maxPhotos
+                    amenities.isNotEmpty()
                 ) {
                     // Guardar la casa si todo es válido
                     val newHouse = HouseDetails(
@@ -840,17 +1128,21 @@ fun AddHouseScreen(
                         bathrooms = bathrooms.toInt(),
                         amenities = amenities,
                         generalFeatures = generalFeatures,
-                        photos = selectedImages.toList(),
+                        //photos = selectedImages.toList(),
                         paymentPlan = selectedPlan,
-                        latitude = selectedLocation!!.latitude,
-                        longitude = selectedLocation!!.longitude
+                        Iot = IOT("", "", "", true)
+                        //latitude = selectedLocation!!.latitude,
+                        //longitude = selectedLocation!!.longitude
                     )
-
                     // Agregar la nueva casa a la lista global
                     MainActivity.globalHouseList.add(newHouse)
 
                     // Mostrar confirmación
                     Toast.makeText(context, "Casa agregada con éxito", Toast.LENGTH_SHORT).show()
+
+                    onBack()
+
+
                 } else {
                     // Mostrar error si faltan datos
                     Toast.makeText(
