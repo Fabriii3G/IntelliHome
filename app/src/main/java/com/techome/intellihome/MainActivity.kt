@@ -148,7 +148,7 @@ data class HouseDetails(
     val bathrooms: Int,
     val amenities: String,
     val generalFeatures: String,
-    //val photos: List<Uri>,  // Uri para las imágenes de la casa
+    val photos: List<Uri>,  // Uri para las imágenes de la casa
     val paymentPlan: String,
     //val latitude: Double,
     //val longitude: Double
@@ -947,7 +947,7 @@ fun PreviewAdminMenuScreen() {
 fun AddHouseScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit, // Callback para volver al menú
-    maxPhotos: Int = 0 // Número máximo de fotos permitido (por defecto: 3)
+    maxPhotos: Int = 3 // Número máximo de fotos permitido (por defecto: 3)
 ) {
     // Variables para los campos del formulario
     var capacity by remember { mutableStateOf("") }
@@ -1110,7 +1110,14 @@ fun AddHouseScreen(
 
             LazyColumn {
                 items(selectedImages) { imageUri ->
-                    AsyncImage(model = imageUri, contentDescription = null)
+                    AsyncImage(
+                        model = imageUri,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .width(100.dp)  // Ajusta el ancho
+                            .height(100.dp) // Ajusta el alto
+                            .padding(8.dp)  // Espacio alrededor de la imagen
+                    )
                 }
             }
 
@@ -1128,7 +1135,7 @@ fun AddHouseScreen(
                         bathrooms = bathrooms.toInt(),
                         amenities = amenities,
                         generalFeatures = generalFeatures,
-                        //photos = selectedImages.toList(),
+                        photos = selectedImages.toList(),
                         paymentPlan = selectedPlan,
                         Iot = IOT("", "", "", true)
                         //latitude = selectedLocation!!.latitude,
