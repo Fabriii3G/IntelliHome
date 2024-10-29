@@ -69,6 +69,16 @@ import android.os.Environment
 import androidx.compose.material3.OutlinedTextField
 
 
+import java.util.*
+import javax.mail.Authenticator
+import javax.mail.Message
+import javax.mail.PasswordAuthentication
+import javax.mail.Session
+import javax.mail.Transport
+import javax.mail.internet.InternetAddress
+import javax.mail.internet.MimeMessage
+
+
 class MainActivity : ComponentActivity() {
     companion object {
         val globalHouseList = mutableListOf<HouseDetails>()
@@ -667,7 +677,7 @@ fun AdminMenuScreen(context: Context) {
         }
     }
 }
-
+//----------------------------------------------------------------------------------------------------------------
 @Composable
 fun EditHousesScreen(onBack: () -> Unit) {
     var selectedHouse by remember { mutableStateOf<HouseDetails?>(null) } // Casa seleccionada para edición
@@ -1778,14 +1788,59 @@ fun readUserDataByEmail(context: Context, email: String): User? {
 }
 
 fun sendRecoveryCode(context: Context, email: String) {
+    // Verifica si el correo existe en la lista de usuarios
+    val user = readUserDataByEmail(context, email)
+    if (user == null) {
+        // Mostrar mensaje si el correo no existe
+        Toast.makeText(context, "Correo no encontrado", Toast.LENGTH_SHORT).show()
+        return
+    }
+
+    // Genera el código de recuperación
     val code = (10000..99999).random().toString()
+
+    // Guarda el código en SharedPreferences
     val sharedPreferences = context.getSharedPreferences("RecoveryPrefs", Context.MODE_PRIVATE)
     sharedPreferences.edit().putString("recovery_code", code).putString("recovery_email", email).apply()
 
-    // Simulación de envío del código
-    Toast.makeText(context, "Código enviado: $code", Toast.LENGTH_LONG).show()
+    // Enviar el código por correo electrónico
+    sendEmail(email, code)
+
+    // Mostrar mensaje de confirmación de envío
+    Toast.makeText(context, "Código enviado al correo: $email", Toast.LENGTH_LONG).show()
 }
 
+private fun sendEmail(toEmail: String, code: String) {
+    // Configuración del servidor SMTP
+    val props = Properties()
+    props["mail.smtp.auth"] = "true"
+    props["mail.smtp.starttls.enable"] = "true"
+    props["mail.smtp.host"] = "587.gmail.com" // Cambiar según tu servidor SMTP
+    props["mail.smtp.port"] = "587"
+
+    // Credenciales del remitente
+    val username = "tr9j1x@gmail.com" // Reemplaza con tu correo
+    val password = "Tr9j1x1208" // Reemplaza con tu contraseña o token de aplicación
+
+    val session = Session.getInstance(props, object : Authenticator() {
+        override fun getPasswordAuthentication(): PasswordAuthentication {
+            return PasswordAuthentication(username, password)
+        }
+    })
+
+    try {
+        val message = MimeMessage(session)
+        message.setFrom(InternetAddress(username))
+        message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail))
+        message.subject = "Código de recuperación de cuenta"
+        message.setText("Su código de verificación es: $code")
+
+        // Enviar el mensaje
+        Transport.send(message)
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
 fun saveNewPassword(context: Context, newPassword: String) {
     val sharedPreferences = context.getSharedPreferences("RecoveryPrefs", Context.MODE_PRIVATE)
     val email = sharedPreferences.getString("recovery_email", "")
