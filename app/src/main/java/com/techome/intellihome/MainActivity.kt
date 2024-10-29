@@ -664,7 +664,7 @@ fun AdminMenuScreen(context: Context) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Nuevo botón para agregar una casa
-            Button(onClick = { showAddHouseScreen = true }) {
+             Button(onClick = { showAddHouseScreen = true }) {
                 Text("Agregar Nueva Casa")
             }
 
@@ -1584,7 +1584,7 @@ fun RegisterUserScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = onPaymentClick) {
-            Text("Continuar a Pago")
+            Text("Ingresar datos de Tarjeta")
         }
     }
 }
@@ -1706,12 +1706,13 @@ fun PaymentScreen(onBack: () -> Unit) {  // Aceptar un callback para volver
         // Botón para confirmar el pago
         Button(onClick = {
             if (cardNumber.length == 16 && securityCode.length == 4 && cardBrand != null) {
-                Toast.makeText(context, "Pago procesado con éxito", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Datos agregados con éxito", Toast.LENGTH_LONG).show()
+                onBack()  // Volver a la pantalla anterior
             } else {
                 Toast.makeText(context, "Verifica la información ingresada", Toast.LENGTH_LONG).show()
             }
         }) {
-            Text("Confirmar Pago")
+            Text("Confirmar Datos")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
