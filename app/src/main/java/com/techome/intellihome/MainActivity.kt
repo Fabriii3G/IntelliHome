@@ -82,7 +82,10 @@ import javax.mail.internet.MimeMessage
 class MainActivity : ComponentActivity() {
     companion object {
         val globalHouseList = mutableListOf<HouseDetails>()
+        var cardInfo = CardInfo()
+        var tempUser: User? = null
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -150,8 +153,16 @@ data class User(
     var password: String,
     val age: Int,
     var houseType: String,
-    var vehicleType: String
+    var vehicleType: String,
 )
+
+data class CardInfo(
+    var cardholderName: String = "",
+    var cardNumber: String = "",
+    var expiryDate: String = "",
+    var securityCode: String = ""
+)
+
 data class HouseDetails(
     val capacity: Int,
     val rooms: Int,
@@ -1444,13 +1455,17 @@ fun RegisterUserScreen(
     onBack: () -> Unit,
     onPaymentClick: () -> Unit
 ) {
-    var alias by rememberSaveable { mutableStateOf("") }
-    var fullName by rememberSaveable { mutableStateOf("") }
-    var email by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var age by rememberSaveable { mutableStateOf("") }
-    var houseType by rememberSaveable { mutableStateOf("") }
-    var vehicleType by rememberSaveable { mutableStateOf("") }
+    // Recupera los datos del usuario al iniciar la pantalla de registro
+    val tempUser = MainActivity.tempUser
+    var alias by rememberSaveable { mutableStateOf(tempUser?.alias ?: "") }
+    var fullName by rememberSaveable { mutableStateOf(tempUser?.fullName ?: "") }
+    var email by rememberSaveable { mutableStateOf(tempUser?.email ?: "") }
+    var password by rememberSaveable { mutableStateOf(tempUser?.password ?: "") }
+    var age by rememberSaveable { mutableStateOf(tempUser?.age?.toString() ?: "") }
+    var houseType by rememberSaveable { mutableStateOf(tempUser?.houseType ?: "") }
+    var vehicleType by rememberSaveable { mutableStateOf(tempUser?.vehicleType ?: "") }
+
+
 
     val context = LocalContext.current
 
@@ -1563,13 +1578,14 @@ fun RegisterUserScreen(
 
         // Botón para registrar el usuario
         Button(onClick = {
-            val user = User(alias, fullName, email, password, age.toInt(), houseType, vehicleType)
+            val user = User(alias, fullName, email, password, age.toIntOrNull() ?: 0, houseType, vehicleType)
             if (isPasswordValid(password)) {
                 saveUserToFile(context, user)
                 Toast.makeText(context, "Usuario registrado exitosamente", Toast.LENGTH_LONG).show()
-                onBack()  // Regresar al login después del registro
+                MainActivity.tempUser = null // Limpiar el usuario temporal
+                onBack()  // Volver al inicio de sesión
             } else {
-                Toast.makeText(context, "Contraseña inválida. Debe contener al menos 8 caracteres, incluyendo mayúsculas, minúsculas, números y símbolos", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Contraseña inválida", Toast.LENGTH_LONG).show()
             }
         }) {
             Text("Registrar Usuario")
@@ -1583,7 +1599,18 @@ fun RegisterUserScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = onPaymentClick) {
+        Button(onClick = {
+            MainActivity.tempUser = User(
+                alias = alias,
+                fullName = fullName,
+                email = email,
+                password = password,
+                age = age.toIntOrNull() ?: 0,
+                houseType = houseType,
+                vehicleType = vehicleType
+            )
+            onPaymentClick() // Navegar a la pantalla de pago
+        }) {
             Text("Ingresar datos de Tarjeta")
         }
     }
@@ -1706,8 +1733,14 @@ fun PaymentScreen(onBack: () -> Unit) {  // Aceptar un callback para volver
         // Botón para confirmar el pago
         Button(onClick = {
             if (cardNumber.length == 16 && securityCode.length == 4 && cardBrand != null) {
+                MainActivity.cardInfo = CardInfo(
+                    cardholderName = cardholderName,
+                    cardNumber = cardNumber,
+                    expiryDate = expiryDate,
+                    securityCode = securityCode
+                )
                 Toast.makeText(context, "Datos agregados con éxito", Toast.LENGTH_LONG).show()
-                onBack()  // Volver a la pantalla anterior
+                onBack()  // Regresar a la pantalla anterior
             } else {
                 Toast.makeText(context, "Verifica la información ingresada", Toast.LENGTH_LONG).show()
             }
