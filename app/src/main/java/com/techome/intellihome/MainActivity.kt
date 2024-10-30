@@ -41,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -175,6 +176,7 @@ data class HouseDetails(
     //val longitude: Double
     val Devices: MutableList<IOT> = mutableListOf<IOT>(),
     var Iot: IOT,
+    var status: Boolean
     //var IOTDevice: String = "",
     //var TypeOfDevice: String = "",
     //var LocationAtHouse: String = "",
@@ -700,6 +702,8 @@ fun PreviewAdminMenuScreen() {
 fun EditHousesScreen(onBack: () -> Unit) {
     var selectedHouse by remember { mutableStateOf<HouseDetails?>(null) } // Casa seleccionada para edición
     var showIOTDevicesScreen by remember { mutableStateOf(false) }
+    var showConfirmationDialog by remember { mutableStateOf(false) }
+    var isActivating by remember { mutableStateOf(true) }
     var showEditHouseDetailsScreen by remember { mutableStateOf(false) }  // Control para mostrar EditHouseDetailsScreen
 
     if (showEditHouseDetailsScreen && selectedHouse != null) {
@@ -768,6 +772,23 @@ fun EditHousesScreen(onBack: () -> Unit) {
                             Text("Ver dispositivos")
                         }
 
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = {
+                            selectedHouse = house // Seleccionar la casa actual
+                            isActivating = true
+                            showConfirmationDialog = true
+                        }) {
+                            Text("Activar")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = {
+                            selectedHouse = house // Seleccionar la casa actual
+                            isActivating = false
+                            showConfirmationDialog = true
+                        }) {
+                            Text("Desactivar")
+                        }
+
                     }
                 }
             }
@@ -777,8 +798,47 @@ fun EditHousesScreen(onBack: () -> Unit) {
             Button(onClick = onBack) {
                 Text("Volver")
             }
+            if (showConfirmationDialog && selectedHouse != null) {
+                AlertDialog(
+                    onDismissRequest = {
+                        showConfirmationDialog = false
+                    },
+                    title = {
+                        Text(text = "Confirmación")
+                    },
+                    text = {
+                        Text(
+                            text = if (isActivating)
+                                "¿Estás seguro de que deseas activar esta casa?"
+                            else
+                                "¿Estás seguro de que deseas desactivar esta casa?"
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                selectedHouse?.status = isActivating
+                                showConfirmationDialog = false
+                            }
+                        ) {
+                            Text("Confirmar")
+                        }
+                    },
+                    dismissButton = {
+                        Button(
+                            onClick = {
+                                showConfirmationDialog = false
+                            }
+                        ) {
+                            Text("Cancelar")
+                        }
+                    }
+                )
+            }
+
         }
     }
+
 }
 
 @Preview(showBackground = true)
@@ -1167,7 +1227,8 @@ fun AddHouseScreen(
                         generalFeatures = generalFeatures,
                         photos = selectedImages.toList(),
                         paymentPlan = selectedPlan,
-                        Iot = IOT("", "", "", true)
+                        Iot = IOT("", "", "", true),
+                        status = false
                         //latitude = selectedLocation!!.latitude,
                         //longitude = selectedLocation!!.longitude
                     )
