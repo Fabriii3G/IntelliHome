@@ -1289,13 +1289,6 @@ fun UserMenuContent(onEdit: () -> Unit) {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewUserMenuContent() {
-    UserMenuContent(onEdit = {})
-}
-
-
 @Composable
 fun EditUserScreen(onSave: () -> Unit) {
     val context = LocalContext.current
