@@ -186,7 +186,6 @@ data class IOT(
     var Location: String = "",
     var Activated: Boolean
 )
-
 var isAppEnabled by mutableStateOf(true) // Variable para habilitar/deshabilitar el aplicativo
 var isLoggedIn by mutableStateOf(false)  // Variable global para estado de sesión
 var isAdmin by mutableStateOf(false)     // Variable global para saber si el usuario es Admin
@@ -1448,8 +1447,7 @@ fun PreviewEditUserScreen() {
     EditUserScreen(onSave = {})
 }
 
-
-// Pantalla de registro de usuario actualizada con validación de contraseña
+//Ventana de registro de usuario
 @Composable
 fun RegisterUserScreen(
     onBack: () -> Unit,
@@ -1465,24 +1463,27 @@ fun RegisterUserScreen(
     var houseType by rememberSaveable { mutableStateOf(tempUser?.houseType ?: "") }
     var vehicleType by rememberSaveable { mutableStateOf(tempUser?.vehicleType ?: "") }
 
-
-
     val context = LocalContext.current
 
     Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+
+        Spacer(modifier = Modifier.height(25.dp))
+
         // Campos de texto para el registro de usuario
         BasicTextField(
             value = alias,
             onValueChange = { alias = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(8.dp),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
+                Box(modifier = Modifier.padding(8.dp)) {
                     if (alias.isEmpty()) Text("Alias")
                     innerTextField()
                 }
@@ -1494,9 +1495,9 @@ fun RegisterUserScreen(
             onValueChange = { fullName = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(8.dp),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
+                Box(modifier = Modifier.padding(8.dp)) {
                     if (fullName.isEmpty()) Text("Nombre Completo")
                     innerTextField()
                 }
@@ -1508,9 +1509,9 @@ fun RegisterUserScreen(
             onValueChange = { email = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(8.dp),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
+                Box(modifier = Modifier.padding(8.dp)) {
                     if (email.isEmpty()) Text("Email")
                     innerTextField()
                 }
@@ -1522,10 +1523,10 @@ fun RegisterUserScreen(
             onValueChange = { password = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(8.dp),
             visualTransformation = PasswordVisualTransformation(),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
+                Box(modifier = Modifier.padding(8.dp)) {
                     if (password.isEmpty()) Text("Contraseña")
                     innerTextField()
                 }
@@ -1537,68 +1538,96 @@ fun RegisterUserScreen(
             onValueChange = { age = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(8.dp),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
+                Box(modifier = Modifier.padding(8.dp)) {
                     if (age.isEmpty()) Text("Edad")
                     innerTextField()
                 }
             }
         )
 
-        BasicTextField(
-            value = houseType,
-            onValueChange = { houseType = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
-                    if (houseType.isEmpty()) Text("Tipo de Casa")
-                    innerTextField()
+        // Selector de tipo de casa
+        val houseTypes = listOf("Apartamento Inteligente", "Apartamento Normal", "Casa Normal", "Casa con Apartamento")
+        var selectedHouseType by rememberSaveable { mutableStateOf(houseType) }
+        var expandedHouseType by rememberSaveable { mutableStateOf(false) }
+        Box {
+            Button(onClick = { expandedHouseType = !expandedHouseType }) {
+                Text(if (selectedHouseType.isEmpty()) "Seleccionar tipo de casa" else selectedHouseType)
+            }
+            DropdownMenu(
+                expanded = expandedHouseType,
+                onDismissRequest = { expandedHouseType = false }
+            ) {
+                houseTypes.forEach { type ->
+                    DropdownMenuItem(
+                        text = { Text(type) },
+                        onClick = {
+                            selectedHouseType = type // Cambiar al tipo seleccionado
+                            expandedHouseType = false
+                        }
+                    )
                 }
             }
-        )
-
-        BasicTextField(
-            value = vehicleType,
-            onValueChange = { vehicleType = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
-                    if (vehicleType.isEmpty()) Text("Tipo de Vehículo")
-                    innerTextField()
-                }
-            }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Botón para registrar el usuario
-        Button(onClick = {
-            val user = User(alias, fullName, email, password, age.toIntOrNull() ?: 0, houseType, vehicleType)
-            if (isPasswordValid(password)) {
-                saveUserToFile(context, user)
-                Toast.makeText(context, "Usuario registrado exitosamente", Toast.LENGTH_LONG).show()
-                MainActivity.tempUser = null // Limpiar el usuario temporal
-                onBack()  // Volver al inicio de sesión
-            } else {
-                Toast.makeText(context, "Contraseña inválida", Toast.LENGTH_LONG).show()
-            }
-        }) {
-            Text("Registrar Usuario")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = onBack) {
-            Text("Volver")
+        // Selector de tipo de vehículo
+        val vehicleTypes = listOf("Bicicleta", "Carro", "Moto", "Otro")
+        var selectedVehicleType by rememberSaveable { mutableStateOf(vehicleType) }
+        var expandedVehicleType by rememberSaveable { mutableStateOf(false) }
+        Box {
+            Button(onClick = { expandedVehicleType = !expandedVehicleType }) {
+                Text(if (selectedVehicleType.isEmpty()) "Seleccionar tipo de vehiculo" else selectedVehicleType)
+            }
+            DropdownMenu(
+                expanded = expandedVehicleType,
+                onDismissRequest = { expandedVehicleType = false }
+            ) {
+                vehicleTypes.forEach { type ->
+                    DropdownMenuItem(
+                        text = { Text(type) },
+                        onClick = {
+                            selectedVehicleType = type
+                            expandedVehicleType = false
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Contenedor para botones "Volver" y "Registrar Usuario"
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Button(onClick = onBack) {
+                Text("Volver")
+            }
+
+            Button(onClick = {
+                val user = User(alias, fullName, email, password, age.toIntOrNull() ?: 0, houseType, vehicleType)
+                if (isPasswordValid(password)) {
+                    saveUserToFile(context, user)
+                    Toast.makeText(context, "Usuario registrado exitosamente", Toast.LENGTH_LONG).show()
+                    MainActivity.tempUser = null
+                    onBack()
+                } else {
+                    Toast.makeText(context, "Contraseña inválida", Toast.LENGTH_LONG).show()
+                }
+            }) {
+                Text("Registrar Usuario")
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Botón para ingresar datos de tarjeta
         Button(onClick = {
             MainActivity.tempUser = User(
                 alias = alias,
@@ -1609,12 +1638,15 @@ fun RegisterUserScreen(
                 houseType = houseType,
                 vehicleType = vehicleType
             )
-            onPaymentClick() // Navegar a la pantalla de pago
+            onPaymentClick()
         }) {
             Text("Ingresar datos de Tarjeta")
         }
     }
 }
+
+
+
 
 
 @Preview(showBackground = true)
