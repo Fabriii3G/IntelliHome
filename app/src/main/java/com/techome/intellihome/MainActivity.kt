@@ -65,7 +65,6 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
-import android.os.Environment
 import androidx.compose.material3.OutlinedTextField
 
 
@@ -151,7 +150,7 @@ data class User(
     var fullName: String,
     var email: String,
     var password: String,
-    val age: Int,
+    val dateOfBirth: String,
     var houseType: String,
     var vehicleType: String,
 )
@@ -189,7 +188,7 @@ data class IOT(
 var isAppEnabled by mutableStateOf(true) // Variable para habilitar/deshabilitar el aplicativo
 var isLoggedIn by mutableStateOf(false)  // Variable global para estado de sesión
 var isAdmin by mutableStateOf(false)     // Variable global para saber si el usuario es Admin
-var currentUser by mutableStateOf(User("A", "B", "C", "D", 1, "F", "G"))
+var currentUser by mutableStateOf(User("A", "B", "C", "D", "E", "F", "G"))
 
 // Función para validar contraseñas
 fun isPasswordValid(password: String): Boolean {
@@ -219,7 +218,7 @@ fun saveUserToFile(context: android.content.Context, user: User) {
         val userExists = lines.any { it.startsWith(user.alias) }
 
         if (!userExists) {
-            file.appendText("${user.alias},${user.fullName},${user.email},${user.password},${user.age},${user.houseType},${user.vehicleType}\n")
+            file.appendText("${user.alias},${user.fullName},${user.email},${user.password},${user.dateOfBirth},${user.houseType},${user.vehicleType}\n")
             println("Usuario '${user.alias}' guardado correctamente.")
         } else {
             println("El usuario '${user.alias}' ya existe.")
@@ -278,7 +277,7 @@ fun makeUserAdmin(context: android.content.Context, user: User) {
         val newLines = lines.map { line ->
             val parts = line.split(",")
             if (parts[0] == user.alias) {
-                "${user.alias},Administrador,${user.email},${user.password},${user.age},${user.houseType},${user.vehicleType}"
+                "${user.alias},Administrador,${user.email},${user.password},${user.dateOfBirth},${user.houseType},${user.vehicleType}"
             } else {
                 line
             }
@@ -1462,7 +1461,7 @@ fun RegisterUserScreen(
     var fullName by rememberSaveable { mutableStateOf(tempUser?.fullName ?: "") }
     var email by rememberSaveable { mutableStateOf(tempUser?.email ?: "") }
     var password by rememberSaveable { mutableStateOf(tempUser?.password ?: "") }
-    var age by rememberSaveable { mutableStateOf(tempUser?.age?.toString() ?: "") }
+    var dateOfBirth by rememberSaveable { mutableStateOf(tempUser?.dateOfBirth ?: "") }
     var houseType by rememberSaveable { mutableStateOf(tempUser?.houseType ?: "") }
     var vehicleType by rememberSaveable { mutableStateOf(tempUser?.vehicleType ?: "") }
 
@@ -1536,22 +1535,35 @@ fun RegisterUserScreen(
             }
         )
 
-        BasicTextField(
-            value = age,
-            onValueChange = { age = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(8.dp)) {
-                    if (age.isEmpty()) Text("Edad")
-                    innerTextField()
-                }
+        val dateOfBirthPattern = Regex("""\d{2}/\d{2}/\d{4}""")
+        val isDateOfBirthValid = dateOfBirth.matches(dateOfBirthPattern)
+
+        Button(onClick = {
+            if (!isDateOfBirthValid) {
+                Toast.makeText(
+                    context,
+                    "Por favor ingresa la fecha de nacimiento en el formato dd/mm/aaaa",
+                    Toast.LENGTH_LONG
+                ).show()
+            } else {
+                val user =
+                    User(alias, fullName, email, password, dateOfBirth, houseType, vehicleType)
+                saveUserToFile(context, user)
+                Toast.makeText(context, "Usuario registrado exitosamente", Toast.LENGTH_LONG).show()
+                onBack()
             }
-        )
+        }) {
+            Text("Registrar Usuario")
+        }
+
 
         // Selector de tipo de casa
-        val houseTypes = listOf("Apartamento Inteligente", "Apartamento Normal", "Casa Normal", "Casa con Apartamento")
+        val houseTypes = listOf(
+            "Apartamento Inteligente",
+            "Apartamento Normal",
+            "Casa Normal",
+            "Casa con Apartamento"
+        )
         var selectedHouseType by rememberSaveable { mutableStateOf(houseType) }
         var expandedHouseType by rememberSaveable { mutableStateOf(false) }
         Box {
@@ -1614,10 +1626,12 @@ fun RegisterUserScreen(
             }
 
             Button(onClick = {
-                val user = User(alias, fullName, email, password, age.toIntOrNull() ?: 0, houseType, vehicleType)
+                val user =
+                    User(alias, fullName, email, password, dateOfBirth, houseType, vehicleType)
                 if (isPasswordValid(password)) {
                     saveUserToFile(context, user)
-                    Toast.makeText(context, "Usuario registrado exitosamente", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Usuario registrado exitosamente", Toast.LENGTH_LONG)
+                        .show()
                     MainActivity.tempUser = null
                     onBack()
                 } else {
@@ -1630,14 +1644,14 @@ fun RegisterUserScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Botón para ingresar datos de tarjeta
+// Botón para ingresar datos de tarjeta
         Button(onClick = {
             MainActivity.tempUser = User(
                 alias = alias,
                 fullName = fullName,
                 email = email,
                 password = password,
-                age = age.toIntOrNull() ?: 0,
+                dateOfBirth = dateOfBirth,  // Aquí no es necesario convertirlo
                 houseType = houseType,
                 vehicleType = vehicleType
             )
@@ -1647,6 +1661,8 @@ fun RegisterUserScreen(
         }
     }
 }
+
+
 
 
 
@@ -1824,14 +1840,14 @@ fun readUserDataFromFile(context: Context, alias: String): User {
                     fullName = parts[1],
                     email = parts[2],
                     password = parts[3],
-                    age = parts[4].toInt(), // Convertir el campo de edad a entero
+                    dateOfBirth = parts[4], // Convertir el campo de edad a entero
                     houseType = parts[5],
                     vehicleType = parts[6]
                 )
             }
         }
     }
-    return User("A", "B", "C", "D", 1, "F", "G")
+    return User("A", "B", "C", "D", "E", "F", "G")
 }
 
 fun readUserDataByEmail(context: Context, email: String): User? {
@@ -1846,7 +1862,7 @@ fun readUserDataByEmail(context: Context, email: String): User? {
                     fullName = parts[1],
                     email = parts[2],
                     password = parts[3],
-                    age = parts[4].toInt(),
+                    dateOfBirth = parts[4],
                     houseType = parts[5],
                     vehicleType = parts[6]
                 )
@@ -1947,7 +1963,7 @@ fun readAllUsers(context: Context): List<User> {
                         fullName = parts[1],
                         email = parts[2],
                         password = parts[3],
-                        age = parts[4].toInt(),
+                        dateOfBirth = parts[4],
                         houseType = parts[5],
                         vehicleType = parts[6]
                     )
