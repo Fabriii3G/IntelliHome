@@ -687,6 +687,14 @@ fun AdminMenuScreen(context: Context) {
         }
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewAdminMenuScreen() {
+    val context = LocalContext.current // Necesario para el contexto
+    AdminMenuScreen(context = context)
+}
+
 //----------------------------------------------------------------------------------------------------------------
 @Composable
 fun EditHousesScreen(onBack: () -> Unit) {
@@ -773,6 +781,12 @@ fun EditHousesScreen(onBack: () -> Unit) {
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun PreviewEditHouseScreen() {
+    EditHousesScreen(onBack={})
+}
+
 @Composable
 fun showIOTDevicesScreen(house: HouseDetails, onSave: (HouseDetails) -> Unit, onCancel: () -> Unit){
     val index = MainActivity.globalHouseList.indexOf(house)
@@ -827,6 +841,8 @@ fun showIOTDevicesScreen(house: HouseDetails, onSave: (HouseDetails) -> Unit, on
         }
     }
 }
+
+
 
 @Composable
     fun EditIotsScreen(device: IOT, onSave: (IOT) -> Unit, onCancel: () -> Unit){
@@ -956,12 +972,6 @@ fun EditHouseDetailsScreen(house: HouseDetails, onSave: (HouseDetails) -> Unit, 
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewAdminMenuScreen() {
-    val context = LocalContext.current // Necesario para el contexto
-    AdminMenuScreen(context = context)
-}
 
 @Composable
 fun AddHouseScreen(
@@ -1209,7 +1219,7 @@ fun SelectLocationScreen(onLocationSelected: (LatLng) -> Unit) {
             }
         )
 
-        // Muestra un marcador donde el usuario hace clic
+        // Muestra un marcador donde el usuario hace click
         selectedLocation?.let { location ->
             Marker(
                 state = MarkerState(position = location),
