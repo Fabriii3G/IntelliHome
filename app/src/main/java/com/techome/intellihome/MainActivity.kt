@@ -8,6 +8,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -1461,11 +1462,12 @@ fun RegisterUserScreen(
     var fullName by rememberSaveable { mutableStateOf(tempUser?.fullName ?: "") }
     var email by rememberSaveable { mutableStateOf(tempUser?.email ?: "") }
     var password by rememberSaveable { mutableStateOf(tempUser?.password ?: "") }
-    var dateOfBirth by rememberSaveable { mutableStateOf(tempUser?.dateOfBirth ?: "") }
+    var dateOfBirth by rememberSaveable { mutableStateOf("") }
+    val dateOfBirthPattern = Regex("""\d{2}/\d{2}/\d{4}""")
     var houseType by rememberSaveable { mutableStateOf(tempUser?.houseType ?: "") }
     var vehicleType by rememberSaveable { mutableStateOf(tempUser?.vehicleType ?: "") }
-
     val context = LocalContext.current
+
 
     Column(
         modifier = Modifier
@@ -1535,27 +1537,35 @@ fun RegisterUserScreen(
             }
         )
 
-        val dateOfBirthPattern = Regex("""\d{2}/\d{2}/\d{4}""")
-        val isDateOfBirthValid = dateOfBirth.matches(dateOfBirthPattern)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Campo de texto para la fecha de nacimiento con autoformateo
+            OutlinedTextField(
+                value = dateOfBirth,
+                onValueChange = { input ->
+                    dateOfBirth = formatDateString(input)  // Llama a la función de autoformateo
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                label = { Text("Fecha de Nacimiento (dd/mm/aaaa)") },
+                isError = dateOfBirth.isNotEmpty() && !dateOfBirth.matches(dateOfBirthPattern)
+            )
 
-        Button(onClick = {
-            if (!isDateOfBirthValid) {
-                Toast.makeText(
-                    context,
-                    "Por favor ingresa la fecha de nacimiento en el formato dd/mm/aaaa",
-                    Toast.LENGTH_LONG
-                ).show()
-            } else {
-                val user =
-                    User(alias, fullName, email, password, dateOfBirth, houseType, vehicleType)
-                saveUserToFile(context, user)
-                Toast.makeText(context, "Usuario registrado exitosamente", Toast.LENGTH_LONG).show()
-                onBack()
+            // Validación de la fecha al salir del campo
+            if (dateOfBirth.isNotEmpty() && !dateOfBirth.matches(dateOfBirthPattern)) {
+                Text(
+                    text = "Por favor ingresa la fecha de nacimiento en el formato dd/mm/aaaa",
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
-        }) {
-            Text("Registrar Usuario")
         }
-
+    }
 
         // Selector de tipo de casa
         val houseTypes = listOf(
@@ -1660,13 +1670,20 @@ fun RegisterUserScreen(
             Text("Ingresar datos de Tarjeta")
         }
     }
+
+// Función para formatear la fecha automáticamente mientras el usuario escribe
+fun formatDateString(input: String): String {
+    // Elimina cualquier carácter que no sea dígito
+    val digits = input.filter { it.isDigit() }
+    val builder = StringBuilder()
+
+    for (i in digits.indices) {
+        if (i == 2 || i == 4) builder.append("/")
+        builder.append(digits[i])
+    }
+
+    return builder.toString()
 }
-
-
-
-
-
-
 
 @Preview(showBackground = true)
 @Composable
