@@ -34,6 +34,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.LocalTextStyle
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -68,6 +69,8 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalTextInputService
 
 
 import java.util.*
@@ -325,7 +328,7 @@ fun LoginScreen(
                     .padding(16.dp),
                 decorationBox = { innerTextField ->
                     Box(modifier = Modifier.padding(16.dp)) {
-                        if (username.isEmpty()) Text("Usuario")
+                        if (username.isEmpty()) Text("Usuario/Alias")
                         innerTextField()
                     }
                 }
@@ -1511,7 +1514,7 @@ fun PreviewEditUserScreen() {
     EditUserScreen(onSave = {})
 }
 
-//Ventana de registro de usuario
+// Ventana de registro de usuario
 @Composable
 fun RegisterUserScreen(
     onBack: () -> Unit,
@@ -1528,7 +1531,6 @@ fun RegisterUserScreen(
     var houseType by rememberSaveable { mutableStateOf(tempUser?.houseType ?: "") }
     var vehicleType by rememberSaveable { mutableStateOf(tempUser?.vehicleType ?: "") }
     val context = LocalContext.current
-
 
     Column(
         modifier = Modifier
@@ -1598,35 +1600,24 @@ fun RegisterUserScreen(
             }
         )
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Campo de texto para la fecha de nacimiento con autoformateo
-            OutlinedTextField(
-                value = dateOfBirth,
-                onValueChange = { input ->
-                    dateOfBirth = formatDateString(input)  // Llama a la función de autoformateo
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                label = { Text("Fecha de Nacimiento (dd/mm/aaaa)") },
-                isError = dateOfBirth.isNotEmpty() && !dateOfBirth.matches(dateOfBirthPattern)
-            )
+        Spacer(modifier = Modifier.height(16.dp))
 
-            // Validación de la fecha al salir del campo
-            if (dateOfBirth.isNotEmpty() && !dateOfBirth.matches(dateOfBirthPattern)) {
-                Text(
-                    text = "Por favor ingresa la fecha de nacimiento en el formato dd/mm/aaaa",
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
+        // Campo de texto para la fecha de nacimiento con autoformateo
+        DateInputField(
+            date = dateOfBirth,
+            onDateChange = { dateOfBirth = it }
+        )
+
+        // Validación de la fecha al salir del campo
+        if (dateOfBirth.isNotEmpty() && !dateOfBirth.matches(dateOfBirthPattern)) {
+            Text(
+                text = "Por favor ingresa la fecha de nacimiento en el formato dd/mm/aaaa",
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
-    }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
 
         // Selector de tipo de casa
         val houseTypes = listOf(
@@ -1698,7 +1689,7 @@ fun RegisterUserScreen(
 
             Button(onClick = {
                 val user =
-                    User(alias, fullName, email, password, dateOfBirth, houseType, vehicleType)
+                    User(alias, fullName, email, password, dateOfBirth, selectedHouseType, selectedVehicleType)
                 if (isPasswordValid(password)) {
                     saveUserToFile(context, user)
                     Toast.makeText(context, "Usuario registrado exitosamente", Toast.LENGTH_LONG)
@@ -1715,7 +1706,7 @@ fun RegisterUserScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-// Botón para ingresar datos de tarjeta
+        // Botón para ingresar datos de tarjeta
         Button(onClick = {
             MainActivity.tempUser = User(
                 alias = alias,
@@ -1723,28 +1714,48 @@ fun RegisterUserScreen(
                 email = email,
                 password = password,
                 dateOfBirth = dateOfBirth,  // Aquí no es necesario convertirlo
-                houseType = houseType,
-                vehicleType = vehicleType
+                houseType = selectedHouseType,
+                vehicleType = selectedVehicleType
             )
             onPaymentClick()
         }) {
             Text("Ingresar datos de Tarjeta")
         }
     }
+}
+
+
+// Campo de texto para la fecha de nacimiento con autoformateo
+@Composable
+fun DateInputField(date: String, onDateChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = formatDateString(date),
+        onValueChange = { input ->
+            // Filtrar la entrada solo para permitir dígitos
+            val filteredInput = input.filter { it.isDigit() }
+            onDateChange(filteredInput) // Llama a la función de cambio de fecha
+        },
+        label = { Text("Fecha de nacimiento (dd/mm/aaaa)") },
+        modifier = Modifier.fillMaxWidth()
+    )
+}
 
 // Función para formatear la fecha automáticamente mientras el usuario escribe
 fun formatDateString(input: String): String {
-    // Elimina cualquier carácter que no sea dígito
-    val digits = input.filter { it.isDigit() }
-    val builder = StringBuilder()
+    // Filtra solo los dígitos y limita a 8 caracteres para ddMMyyyy
+    val digits = input.filter { it.isDigit() }.take(8)
 
-    for (i in digits.indices) {
-        if (i == 2 || i == 4) builder.append("/")
-        builder.append(digits[i])
+    // Construye el formato dd/mm/aaaa automáticamente
+    return buildString {
+        for (i in digits.indices) {
+            append(digits[i])
+            // Añade la barra después del segundo dígito del día y del mes
+            if (i == 1 || i == 3) append("/")
+        }
     }
-
-    return builder.toString()
 }
+
+
 
 @Preview(showBackground = true)
 @Composable
