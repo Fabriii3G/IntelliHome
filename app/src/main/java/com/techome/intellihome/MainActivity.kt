@@ -570,7 +570,6 @@ fun PreviewResetPasswordScreen() {
     ResetPasswordScreen(onPasswordReset = {})
 }
 
-
 // Pantalla del menú de administrador
 @Composable
 fun AdminMenuScreen(context: Context) {
@@ -582,21 +581,29 @@ fun AdminMenuScreen(context: Context) {
     // Leer todos los usuarios al iniciar la pantalla
     LaunchedEffect(Unit) {
         users.clear()
-        users.addAll(readAllUsers(context))
+        val loadedUsers = readAllUsers(context)
+        if (loadedUsers.isNotEmpty()) {
+            users.addAll(loadedUsers)
+        }
     }
 
     if (showAddHouseScreen) {
         // Mostrar la pantalla para agregar casa
         AddHouseScreen(onBack = { showAddHouseScreen = false })
-    } else if (showEditHousesScreen){
-            EditHousesScreen(onBack = {showEditHousesScreen = false})
+    } else if (showEditHousesScreen) {
+        EditHousesScreen(onBack = { showEditHousesScreen = false })
     } else {
         Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Bienvenido, Admin")
+            Spacer(modifier = Modifier.height(50.dp))
+
+            // Mensaje de bienvenida
+            Text("Bienvenido, Admin", style = MaterialTheme.typography.headlineSmall)
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Botón para habilitar/deshabilitar el aplicativo
             Button(onClick = {
@@ -610,22 +617,15 @@ fun AdminMenuScreen(context: Context) {
                 Text(if (isAppEnabled) "Deshabilitar aplicativo" else "Habilitar aplicativo")
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(50.dp))
 
             // Campo para cambiar la contraseña
-            BasicTextField(
+            OutlinedTextField(
                 value = newPassword,
                 onValueChange = { newPassword = it },
+                label = { Text("Nueva contraseña") },
                 visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                decorationBox = { innerTextField ->
-                    Box(modifier = Modifier.padding(16.dp)) {
-                        if (newPassword.isEmpty()) Text("Nueva contraseña")
-                        innerTextField()
-                    }
-                }
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
             )
 
             // Botón para actualizar la contraseña
@@ -644,23 +644,31 @@ fun AdminMenuScreen(context: Context) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Lista de usuarios
-            Text("Lista de usuarios:")
-            LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                items(users) { user ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("${user.alias} - ${user.fullName}", modifier = Modifier.weight(1f))
-                        Button(onClick = {
-                            if (user.alias != "Admin") {
-                                makeUserAdmin(context, user)
-                                Toast.makeText(context, "${user.alias} ahora es administrador", Toast.LENGTH_SHORT).show()
+            Text("Lista de usuarios:", style = MaterialTheme.typography.headlineSmall)
+            if (users.isEmpty()) {
+                Text("No hay usuarios registrados", modifier = Modifier.padding(16.dp))
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                    items(users) { user ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("${user.alias} - ${user.fullName}", modifier = Modifier.weight(1f))
+                            Button(onClick = {
+                                if (user.alias != "Admin") {
+                                    makeUserAdmin(context, user)
+                                    Toast.makeText(
+                                        context,
+                                        "${user.alias} ahora es administrador",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }) {
+                                Text("Hacer Admin")
                             }
-                        }) {
-                            Text("Hacer Admin")
                         }
                     }
                 }
@@ -678,8 +686,8 @@ fun AdminMenuScreen(context: Context) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Nuevo botón para agregar una casa
-             Button(onClick = { showAddHouseScreen = true }) {
+            // Botón para agregar una casa
+            Button(onClick = { showAddHouseScreen = true }) {
                 Text("Agregar Nueva Casa")
             }
 
@@ -692,6 +700,7 @@ fun AdminMenuScreen(context: Context) {
         }
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable
