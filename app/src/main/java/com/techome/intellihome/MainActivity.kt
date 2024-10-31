@@ -899,10 +899,35 @@ fun showIOTDevicesScreen(house: HouseDetails, onSave: (HouseDetails) -> Unit, on
 
                     Spacer(modifier = Modifier.height(8.dp))
                     Button(onClick = {
-                        selectedDevice = device // Seleccionar la casa actual
+                        selectedDevice = device // Seleccionar el device actual
                         showEditIotsScreen = true // Mostrar pantalla de edición
                     }) {
                         Text("Editar")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = {
+                        selectedDevice = device // Seleccionar el device actual
+                        var index1 = MainActivity.globalHouseList[index].Devices.indexOf(selectedDevice)
+                        MainActivity.globalHouseList[index].Devices.removeAt(index1)
+                    }) {
+                        Text("Eliminar")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = {
+                        selectedDevice = device // Seleccionar el device actual
+                        var index1 = MainActivity.globalHouseList[index].Devices.indexOf(selectedDevice)
+                        if (device.Activated){
+                            MainActivity.globalHouseList[index].Devices[index1].Activated = false
+                        }else{
+                            MainActivity.globalHouseList[index].Devices[index1].Activated = true
+                        }
+                    }) {
+                        Text("Desactivar/Activar")
+                    }
+                    if (device.Activated){
+                        Text("El dispositivo está activado")
+                    }else{
+                        Text("El dispositivo está desactivado")
                     }
                 }
             }
