@@ -79,8 +79,12 @@ import androidx.compose.ui.platform.LocalTextInputService
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
-
-
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.net.Socket
 import java.util.*
 import javax.mail.Authenticator
 import javax.mail.Message
@@ -1358,6 +1362,7 @@ fun UserMenuScreen() {
     // Estado para controlar si el usuario está editando los datos o viendo casas
     var isEditing by rememberSaveable { mutableStateOf(false) }
     var isViewingHouses by rememberSaveable { mutableStateOf(false) }
+    var isOnHouseMenu by rememberSaveable { mutableStateOf(false) }
 
     // Pantalla principal, pantalla de edición o pantalla de casas basada en el estado
     when {
@@ -1375,12 +1380,66 @@ fun UserMenuScreen() {
             })
         }
 
+        isOnHouseMenu-> {
+            RentedHouse(onBack = {
+                isOnHouseMenu = false // Volver al menú de usuario
+            })
+        }
+
         else -> {
             // Mostrar pantalla del menú de usuario
             UserMenuContent(
                 onEdit = { isEditing = true }, // Cambiar el estado a edición
-                onViewHouses = { isViewingHouses = true } // Cambiar el estado a ver casas
+                onViewHouses = { isViewingHouses = true }, // Cambiar el estado a ver casas
+                onViewRented = {isOnHouseMenu = true}
             )
+        }
+    }
+}
+
+@Composable
+fun RentedHouse(onBack: () -> Unit) {
+
+    // Aquí puedes agregar el contenido de la pantalla de ver casas
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Dispositivos:")
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Luz:")
+        Button(onClick = {
+            LightsOn("luz prendida")
+        }) {
+            Text("Activar luz")
+        }
+        Button(onClick = {
+            LightsOff("luz apagada")
+        }) {
+            Text("Desactivar luz")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Servo:")
+        Button(onClick = {
+            move("moviendo")
+        }) {
+            Text("Mover")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Buzzer:")
+        Button(onClick = {
+            sound("sonando")
+        }) {
+            Text("Sonar")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(onClick = onBack) {
+            Text("Volver al menú")
         }
     }
 }
@@ -1393,7 +1452,7 @@ fun PreviewUserMenuScreen() {
 
 
 @Composable
-fun UserMenuContent(onEdit: () -> Unit, onViewHouses: () -> Unit) {
+fun UserMenuContent(onEdit: () -> Unit, onViewHouses: () -> Unit, onViewRented: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
@@ -1413,6 +1472,14 @@ fun UserMenuContent(onEdit: () -> Unit, onViewHouses: () -> Unit) {
         // Botón para ver casas disponibles
         Button(onClick = onViewHouses) {
             Text("Ver casas disponibles")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+
+        // Botón para ver casas disponibles
+        Button(onClick = onViewRented) {
+            Text("Ver casa")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -2290,4 +2357,104 @@ fun startPasswordReminder(context: Context) {
 
     // Iniciar el recordatorio
     handler.post(reminderRunnable)
+}
+
+fun LightsOn(msj: String){
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            // Conectar al servidor
+            val socket = Socket("10.0.2.2", 12345) // Cambia <TU_IP_LOCAL> por la IP del servidor
+
+            // Enviar el mensaje al servidor
+            val outputStream = DataOutputStream(socket.getOutputStream())
+            outputStream.writeUTF(msj)
+
+            // Recibir la respuesta del servidor
+            val inputStream = DataInputStream(socket.getInputStream())
+            val respuesta = inputStream.readUTF()
+
+            // Imprimir la respuesta en los logs
+            println("Respuesta del servidor: $respuesta")
+
+            // Cerrar el socket
+            socket.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+}
+
+fun LightsOff(msj: String){
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            // Conectar al servidor
+            val socket = Socket("10.0.2.2", 12345) // Cambia <TU_IP_LOCAL> por la IP del servidor
+
+            // Enviar el mensaje al servidor
+            val outputStream = DataOutputStream(socket.getOutputStream())
+            outputStream.writeUTF(msj)
+
+            // Recibir la respuesta del servidor
+            val inputStream = DataInputStream(socket.getInputStream())
+            val respuesta = inputStream.readUTF()
+
+            // Imprimir la respuesta en los logs
+            println("Respuesta del servidor: $respuesta")
+
+            // Cerrar el socket
+            socket.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+}
+
+fun move(msj: String){
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            // Conectar al servidor
+            val socket = Socket("10.0.2.2", 12345) // Cambia <TU_IP_LOCAL> por la IP del servidor
+
+            // Enviar el mensaje al servidor
+            val outputStream = DataOutputStream(socket.getOutputStream())
+            outputStream.writeUTF(msj)
+
+            // Recibir la respuesta del servidor
+            val inputStream = DataInputStream(socket.getInputStream())
+            val respuesta = inputStream.readUTF()
+
+            // Imprimir la respuesta en los logs
+            println("Respuesta del servidor: $respuesta")
+
+            // Cerrar el socket
+            socket.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+}
+
+fun sound(msj: String){
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            // Conectar al servidor
+            val socket = Socket("10.0.2.2", 12345) // Cambia <TU_IP_LOCAL> por la IP del servidor
+
+            // Enviar el mensaje al servidor
+            val outputStream = DataOutputStream(socket.getOutputStream())
+            outputStream.writeUTF(msj)
+
+            // Recibir la respuesta del servidor
+            val inputStream = DataInputStream(socket.getInputStream())
+            val respuesta = inputStream.readUTF()
+
+            // Imprimir la respuesta en los logs
+            println("Respuesta del servidor: $respuesta")
+
+            // Cerrar el socket
+            socket.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 }
