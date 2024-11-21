@@ -169,6 +169,12 @@ class MainActivity : ComponentActivity() {
                         "payment" -> PaymentScreen(
                             onBack = { changeScreen("register") }  // Función para regresar a la pantalla de registro
                         )
+                        "viewHouses" -> {
+                            ViewHousesScreen(
+                                onBack = { changeScreen("login") }, // Lógica para regresar al menú principal si es necesario
+                                navigateToPayment = { changeScreen("payment") } // Navega a la pantalla de pago
+                            )
+                        }
                     }
                 }
             }
@@ -1085,7 +1091,6 @@ fun EditHouseDetailsScreen(house: HouseDetails, onSave: (HouseDetails) -> Unit, 
     }
 }
 
-
 @Composable
 fun AddHouseScreen(
     modifier: Modifier = Modifier,
@@ -1363,6 +1368,7 @@ fun UserMenuScreen() {
     var isEditing by rememberSaveable { mutableStateOf(false) }
     var isViewingHouses by rememberSaveable { mutableStateOf(false) }
     var isOnHouseMenu by rememberSaveable { mutableStateOf(false) }
+    var isOnPaymentScreen by rememberSaveable { mutableStateOf(false) }
 
     // Pantalla principal, pantalla de edición o pantalla de casas basada en el estado
     when {
@@ -1375,12 +1381,18 @@ fun UserMenuScreen() {
 
         isViewingHouses -> {
             // Mostrar pantalla de casas
-            ViewHousesScreen(onBack = {
-                isViewingHouses = false // Volver al menú de usuario
-            })
+            ViewHousesScreen(
+                onBack = { isViewingHouses = false }, // Volver al menú de usuario
+                navigateToPayment = { isOnPaymentScreen = true } // Ir a la pantalla de pago
+            )
         }
 
-        isOnHouseMenu-> {
+        isOnPaymentScreen -> {
+            // Mostrar pantalla de pago
+            PaymentScreen(onBack = { isOnPaymentScreen = false }) // Volver a la pantalla de casas
+        }
+
+        isOnHouseMenu -> {
             RentedHouse(onBack = {
                 isOnHouseMenu = false // Volver al menú de usuario
             })
@@ -1391,16 +1403,21 @@ fun UserMenuScreen() {
             UserMenuContent(
                 onEdit = { isEditing = true }, // Cambiar el estado a edición
                 onViewHouses = { isViewingHouses = true }, // Cambiar el estado a ver casas
-                onViewRented = {isOnHouseMenu = true}
+                onViewRented = { isOnHouseMenu = true }
             )
         }
     }
 }
 
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewUserMenuScreen() {
+    UserMenuScreen()
+}
+
 @Composable
 fun RentedHouse(onBack: () -> Unit) {
-
-    // Aquí puedes agregar el contenido de la pantalla de ver casas
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1442,12 +1459,6 @@ fun RentedHouse(onBack: () -> Unit) {
             Text("Volver al menú")
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewUserMenuScreen() {
-    UserMenuScreen()
 }
 
 
@@ -1535,9 +1546,7 @@ fun DatePicker(): String {
 }
 
 @Composable
-fun ViewHousesScreen(onBack: () -> Unit) {
-
-    // Aquí puedes agregar el contenido de la pantalla de ver casas
+fun ViewHousesScreen(onBack: () -> Unit, navigateToPayment: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1546,52 +1555,38 @@ fun ViewHousesScreen(onBack: () -> Unit) {
     ) {
         Spacer(modifier = Modifier.height(16.dp))
         Text("Elija fecha inicial y final")
+
+        // Ejemplo de selección de fechas
         var startDate = DatePicker()
         var endDate = DatePicker()
 
-
-
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = {
-
-        }) {
+        Button(onClick = { /* Lógica de filtrado de casas */ }) {
             Text("Filtrar")
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
         Text("Casas Disponibles")
-        var i = 1
 
-        for (house in MainActivity.globalHouseList) {
-            if (house.status){
-                Text("Casa: ${i}")
+        for ((index, house) in MainActivity.globalHouseList.withIndex()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text("Casa: ${index + 1}")
                 Text("Capacidad: ${house.capacity}")
                 Text("Habitaciones: ${house.rooms}")
                 Text("Baños: ${house.bathrooms}")
                 Text("Amenities: ${house.amenities}")
                 Text("Características Generales: ${house.generalFeatures}")
                 Text("Plan de Pago: ${house.paymentPlan}")
-                i= i+1
-                Button(onClick = {
-                }) {
+
+                Button(onClick = navigateToPayment) {
                     Text("Alquilar")
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-            }else{
-                Text(text= "Casa: ${i}", modifier= Modifier, color = androidx.compose.ui.graphics.Color.Blue)
-                Text(text="Capacidad: ${house.capacity}" , modifier= Modifier, color = androidx.compose.ui.graphics.Color.Blue)
-                Text(text="Habitaciones: ${house.rooms}", modifier= Modifier, color = androidx.compose.ui.graphics.Color.Blue)
-                Text(text="Baños: ${house.bathrooms}", modifier= Modifier, color = androidx.compose.ui.graphics.Color.Blue)
-                Text(text="Amenities: ${house.amenities}", modifier= Modifier, color = androidx.compose.ui.graphics.Color.Blue)
-                Text(text="Características Generales: ${house.generalFeatures}",modifier= Modifier, color = androidx.compose.ui.graphics.Color.Blue)
-                Text(text="Plan de Pago: ${house.paymentPlan}", modifier= Modifier, color = androidx.compose.ui.graphics.Color.Blue)
-                i= i+1
-
-                Spacer(modifier = Modifier.height(16.dp))
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
 
+        Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = onBack) {
             Text("Volver al menú")
         }
@@ -2002,7 +1997,7 @@ fun PreviewRegisterUserScreen() {
 }
 
 @Composable
-fun PaymentScreen(onBack: () -> Unit) {  // Aceptar un callback para volver
+fun PaymentScreen(onBack: () -> Unit) {
     var cardholderName by rememberSaveable { mutableStateOf("") }
     var cardNumber by rememberSaveable { mutableStateOf("") }
     var expiryDate by rememberSaveable { mutableStateOf("") }
@@ -2019,7 +2014,6 @@ fun PaymentScreen(onBack: () -> Unit) {  // Aceptar un callback para volver
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Nombre del Tarjetahabiente
         BasicTextField(
             value = cardholderName,
             onValueChange = { cardholderName = it },
@@ -2034,7 +2028,6 @@ fun PaymentScreen(onBack: () -> Unit) {  // Aceptar un callback para volver
             }
         )
 
-        // Número de tarjeta
         BasicTextField(
             value = cardNumber,
             onValueChange = {
@@ -2061,7 +2054,6 @@ fun PaymentScreen(onBack: () -> Unit) {  // Aceptar un callback para volver
             }
         )
 
-        // Fecha de validez (Mes/Año)
         BasicTextField(
             value = expiryDate,
             onValueChange = { expiryDate = it },
@@ -2076,7 +2068,6 @@ fun PaymentScreen(onBack: () -> Unit) {  // Aceptar un callback para volver
             }
         )
 
-        // Número verificador
         BasicTextField(
             value = securityCode,
             onValueChange = {
@@ -2096,7 +2087,6 @@ fun PaymentScreen(onBack: () -> Unit) {  // Aceptar un callback para volver
             }
         )
 
-        // Mensajes de error y marca de la tarjeta
         if (errorMessage != null) {
             Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
         } else if (cardBrand != null) {
@@ -2104,8 +2094,6 @@ fun PaymentScreen(onBack: () -> Unit) {  // Aceptar un callback para volver
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        // Botón para confirmar el pago
         Button(onClick = {
             if (cardNumber.length == 16 && securityCode.length == 4 && cardBrand != null) {
                 MainActivity.cardInfo = CardInfo(
@@ -2115,7 +2103,7 @@ fun PaymentScreen(onBack: () -> Unit) {  // Aceptar un callback para volver
                     securityCode = securityCode
                 )
                 Toast.makeText(context, "Datos agregados con éxito", Toast.LENGTH_LONG).show()
-                onBack()  // Regresar a la pantalla anterior
+                onBack()
             } else {
                 Toast.makeText(context, "Verifica la información ingresada", Toast.LENGTH_LONG).show()
             }
@@ -2124,14 +2112,11 @@ fun PaymentScreen(onBack: () -> Unit) {  // Aceptar un callback para volver
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        // Botón para volver a la pantalla de registro
         Button(onClick = onBack) {
-            Text("Volver a Registro")
+            Text("Volver al menú")
         }
     }
 }
-
 
 // Preview para visualizar PaymentScreen
 @Preview(showBackground = true)
