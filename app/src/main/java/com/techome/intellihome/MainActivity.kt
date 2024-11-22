@@ -192,6 +192,8 @@ data class User(
     val dateOfBirth: String,
     var houseType: String,
     var vehicleType: String,
+    var card: CardInfo = CardInfo("1","1","1", "1"),
+    var IsRenting: Boolean = false
 )
 
 data class CardInfo(
@@ -626,7 +628,9 @@ fun AdminMenuScreen(context: Context) {
         EditHousesScreen(onBack = { showEditHousesScreen = false })
     } else {
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -657,7 +661,9 @@ fun AdminMenuScreen(context: Context) {
                 onValueChange = { newPassword = it },
                 label = { Text("Nueva contraseña") },
                 visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
             )
 
             // Botón para actualizar la contraseña
@@ -680,7 +686,9 @@ fun AdminMenuScreen(context: Context) {
             if (users.isEmpty()) {
                 Text("No hay usuarios registrados", modifier = Modifier.padding(16.dp))
             } else {
-                LazyColumn(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                LazyColumn(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)) {
                     items(users) { user ->
                         Row(
                             modifier = Modifier
@@ -1477,12 +1485,13 @@ fun UserMenuContent(onEdit: () -> Unit, onViewHouses: () -> Unit, onViewRented: 
         Spacer(modifier = Modifier.height(16.dp))
 
 
-        // Botón para ver casas disponibles
-        Button(onClick = onViewRented) {
-            Text("Ver casa")
-        }
+        if (currentUser.IsRenting){
+            Button(onClick = onViewRented) {
+                Text("Ver casa")
+            }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         // Botón para cerrar sesión
         Button(onClick = {
@@ -1536,7 +1545,9 @@ fun DatePicker(): String {
 
 @Composable
 fun ViewHousesScreen(onBack: () -> Unit) {
-
+    val context = LocalContext.current
+    var showDialog by remember { mutableStateOf(false) } // Estado para mostrar el diálogo
+    var selectedHouse by remember { mutableStateOf("") } // Casa seleccionada
     // Aquí puedes agregar el contenido de la pantalla de ver casas
     Column(
         modifier = Modifier
@@ -1546,20 +1557,30 @@ fun ViewHousesScreen(onBack: () -> Unit) {
     ) {
         Spacer(modifier = Modifier.height(16.dp))
         Text("Elija fecha inicial y final")
-        var startDate = DatePicker()
-        var endDate = DatePicker()
+        // Simulación de fechas
+        var startDate by remember { mutableStateOf("") }
+        var endDate by remember { mutableStateOf("") }
 
-
+        // Puedes reemplazar esto con un DatePicker real
+        Button(onClick = { startDate = "01/01/2024" }) {
+            Text("Seleccionar Fecha Inicial: $startDate")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(onClick = { endDate = "31/01/2024" }) {
+            Text("Seleccionar Fecha Final: $endDate")
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = {
-
+            Toast.makeText(context, "Filtro aplicado", Toast.LENGTH_SHORT).show()
         }) {
             Text("Filtrar")
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
         Text("Casas Disponibles")
+        Spacer(modifier = Modifier.height(8.dp))
         var i = 1
 
         for (house in MainActivity.globalHouseList) {
@@ -1568,11 +1589,17 @@ fun ViewHousesScreen(onBack: () -> Unit) {
                 Text("Capacidad: ${house.capacity}")
                 Text("Habitaciones: ${house.rooms}")
                 Text("Baños: ${house.bathrooms}")
-                Text("Amenities: ${house.amenities}")
+                Text("Amenidades: ${house.amenities}")
                 Text("Características Generales: ${house.generalFeatures}")
                 Text("Plan de Pago: ${house.paymentPlan}")
-                i= i+1
+                i++
                 Button(onClick = {
+                    if (isCardValid(currentUser.card)) {
+                        selectedHouse = "Casa $i"
+                        showDialog = true
+                    } else {
+                        Toast.makeText(context, "Por favor, añade una tarjeta primero", Toast.LENGTH_SHORT).show()
+                    }
                 }) {
                     Text("Alquilar")
                 }
@@ -1595,6 +1622,38 @@ fun ViewHousesScreen(onBack: () -> Unit) {
         Button(onClick = onBack) {
             Text("Volver al menú")
         }
+        // AlertDialog para "Pagar primer mes"
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                title = {
+                    Text("Confirmar Alquiler")
+                },
+                text = {
+                    Text("¿Deseas pagar el primer mes del ${selectedHouse}?")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showDialog = false
+                            Toast.makeText(context, "Pago del primer mes realizado", Toast.LENGTH_SHORT).show()
+                            currentUser.IsRenting = true
+                        }
+                    ) {
+                        Text("Pagar primer mes")
+                    }
+                },
+                dismissButton = {
+                    Button(
+                        onClick = {
+                            showDialog = false
+                        }
+                    ) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -1604,6 +1663,11 @@ fun EditUserScreen(onSave: () -> Unit) {
     var alias by rememberSaveable { mutableStateOf(currentUser.alias) }
     var fullName by rememberSaveable { mutableStateOf(currentUser.fullName) }
     var email by rememberSaveable { mutableStateOf(currentUser.email) }
+    var cardnumber by rememberSaveable { mutableStateOf(currentUser.card.cardNumber) }
+    var carddate by rememberSaveable { mutableStateOf(currentUser.card.expiryDate) }
+    var cardcode by rememberSaveable { mutableStateOf(currentUser.card.securityCode) }
+    var cardname by rememberSaveable { mutableStateOf(currentUser.card.cardholderName) }
+
 
     // Selector de tipo de casa
     val houseTypes = listOf("Apartamento Inteligente", "Apartamento Normal", "Casa Normal", "Casa con Apartamento")
@@ -1618,22 +1682,22 @@ fun EditUserScreen(onSave: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(8.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("Editar datos", style = MaterialTheme.typography.headlineSmall)
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         BasicTextField(
             value = alias,
             onValueChange = { alias = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(8.dp),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
+                Box(modifier = Modifier.padding(8.dp)) {
                     if (alias.isEmpty()) Text("Usuario (alias)")
                     innerTextField()
                 }
@@ -1645,9 +1709,9 @@ fun EditUserScreen(onSave: () -> Unit) {
             onValueChange = { fullName = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(8.dp),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
+                Box(modifier = Modifier.padding(8.dp)) {
                     if (fullName.isEmpty()) Text("Nombre completo")
                     innerTextField()
                 }
@@ -1659,16 +1723,72 @@ fun EditUserScreen(onSave: () -> Unit) {
             onValueChange = { email = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(8.dp),
             decorationBox = { innerTextField ->
-                Box(modifier = Modifier.padding(16.dp)) {
+                Box(modifier = Modifier.padding(8.dp)) {
                     if (email.isEmpty()) Text("Correo electrónico")
                     innerTextField()
                 }
             }
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        BasicTextField(
+            value = cardname,
+            onValueChange = { cardname = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(8.dp)) {
+                    if (cardname.isEmpty()) Text("Nombre del tarjehabitante")
+                    innerTextField()
+                }
+            }
+        )
+
+        BasicTextField(
+            value = cardnumber,
+            onValueChange = { cardnumber = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(8.dp)) {
+                    if (cardnumber.isEmpty()) Text("Numero de tarjeta")
+                    innerTextField()
+                }
+            }
+        )
+
+        BasicTextField(
+            value = carddate,
+            onValueChange = { carddate = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(8.dp)) {
+                    if (carddate.isEmpty()) Text("Expiracion de tarjeta")
+                    innerTextField()
+                }
+            }
+        )
+
+        BasicTextField(
+            value = cardcode,
+            onValueChange = { cardcode = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(8.dp)) {
+                    if (cardcode.isEmpty()) Text("Codigo de tarjeta")
+                    innerTextField()
+                }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Selector de tipo de casa
         Text("Seleccione el tipo de casa:")
@@ -1726,6 +1846,11 @@ fun EditUserScreen(onSave: () -> Unit) {
             currentUser.email = email
             currentUser.houseType = selectedHouseType
             currentUser.vehicleType = selectedVehicleType
+            currentUser.card.cardNumber = cardnumber
+            currentUser.card.cardholderName = cardname
+            currentUser.card.expiryDate = carddate
+            currentUser.card.securityCode = cardcode
+
 
             onSave()  // Llamar al callback de guardado
             saveUserToFile(context, currentUser) // Pasa el contexto y el usuario
@@ -1950,7 +2075,8 @@ fun RegisterUserScreen(
                 password = password,
                 dateOfBirth = dateOfBirth,  // Aquí no es necesario convertirlo
                 houseType = selectedHouseType,
-                vehicleType = selectedVehicleType
+                vehicleType = selectedVehicleType,
+                card = CardInfo("1","1","1", "1")
             )
             onPaymentClick()
         }) {
@@ -2002,7 +2128,7 @@ fun PreviewRegisterUserScreen() {
 }
 
 @Composable
-fun PaymentScreen(onBack: () -> Unit) {  // Aceptar un callback para volver
+fun PaymentScreen(onBack: () -> Unit){  // Aceptar un callback para volver
     var cardholderName by rememberSaveable { mutableStateOf("") }
     var cardNumber by rememberSaveable { mutableStateOf("") }
     var expiryDate by rememberSaveable { mutableStateOf("") }
@@ -2149,6 +2275,17 @@ fun validateCardNumber(cardNumber: String): String? {
         '5' -> "TicaPay"
         else -> null
     }
+}
+
+fun isCardValid(tarjeta: CardInfo): Boolean {
+    // Verificar si la longitud del número de la tarjeta es correcta
+    if (tarjeta.cardNumber.length != 16) return false
+
+    // Obtener el primer carácter del número de tarjeta
+    val firstDigit = tarjeta.cardNumber.firstOrNull() ?: return false
+
+    // Verificar si el primer dígito es uno de los permitidos
+    return firstDigit in listOf('1', '2', '3', '5')
 }
 
 // Función para leer los datos de usuario desde el archivo
