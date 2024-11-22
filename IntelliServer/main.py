@@ -6,12 +6,7 @@ ser = serial.Serial('COM3', 9600)  # Asegúrate de que 'COM3' es el puerto corre
 
 # Función para enviar comandos al Arduino
 def envia_a_arduino(data):
-    if data == "true":
-        ser.write(b'1')
-        print("Comando 'true' enviado a Arduino")
-    elif data == "false":
-        ser.write(b'0')
-        print("Comando 'false' enviado a Arduino")
+    ser.write(data)
 
 # Configuración del servidor TCP para recibir mensajes de la aplicación Android
 HOST = '0.0.0.0'  # Escucha en todas las interfaces de red
@@ -32,8 +27,18 @@ while True:
     message = client_socket.recv(1024).decode('utf-8')
     print(f"Mensaje recibido: {message}")
 
-    # Enviar comando al Arduino basado en el mensaje recibido
-    envia_a_arduino(message)
+    if message == "luz prendida":
+        newmessage = '1'
+        envia_a_arduino(newmessage)
+    elif message == "luz apagada":
+        newmessage = '0'
+        envia_a_arduino(newmessage)
+    elif message == "moviendo":
+        newmessage = '2'
+        envia_a_arduino(newmessage)
+    elif message == "sonando":
+        newmessage = '3'
+        envia_a_arduino(newmessage)
 
     # Enviar una respuesta de confirmación al cliente Android
     response = f"Mensaje '{message}' procesado y enviado a Arduino"
